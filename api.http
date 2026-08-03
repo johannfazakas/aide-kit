@@ -1,0 +1,53 @@
+### Create a task with all fields
+POST http://localhost:8080/api/v1/tasks
+Content-Type: application/json
+
+{
+  "title": "Pay rent",
+  "dueDate": "2026-07-31",
+  "category": "home"
+}
+
+> {% client.global.set("taskId", response.body.id); %}
+
+### Create a task with only a title
+POST http://localhost:8080/api/v1/tasks
+Content-Type: application/json
+
+{
+  "title": "Read a book"
+}
+
+### List all tasks
+GET http://localhost:8080/api/v1/tasks
+
+### List tasks filtered by category
+GET http://localhost:8080/api/v1/tasks?category=home
+
+### Get a task by id
+GET http://localhost:8080/api/v1/tasks/{{taskId}}
+
+### Update a task (full replace) and mark it completed
+PUT http://localhost:8080/api/v1/tasks/{{taskId}}
+Content-Type: application/json
+
+{
+  "title": "Pay rent",
+  "dueDate": "2026-07-31",
+  "category": "home",
+  "completed": true
+}
+
+### Delete a task
+DELETE http://localhost:8080/api/v1/tasks/{{taskId}}
+
+### Error example: blank title is rejected with 400
+POST http://localhost:8080/api/v1/tasks
+Content-Type: application/json
+
+{
+  "title": "  "
+}
+
+### Error example: unknown id returns 404
+GET http://localhost:8080/api/v1/tasks/does-not-exist

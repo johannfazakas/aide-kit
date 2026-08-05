@@ -15,7 +15,7 @@
 ## 3. CI workflow
 
 - [x] 3.1 Create `.github/workflows/build.yml`: triggers on push to `main` and pull requests; checkout → `actions/setup-java` (Temurin 21) → `gradle/actions/setup-gradle` → `./gradlew build`; no secrets
-- [ ] 3.2 Push the branch and verify the workflow runs green on GitHub
+- [x] 3.2 Push the branch and verify the workflow runs green on GitHub
 
 ## 4. Claude hook
 

@@ -3,6 +3,8 @@ kotlin = "2.2.0"
 ktor = "3.2.2"
 logback = "1.5.18"
 koog = "1.1.1-beta"
+ktlint = "1.8.0"
+ktlint-gradle = "14.2.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -18,3 +20,4 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }

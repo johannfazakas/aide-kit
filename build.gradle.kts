@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktlint)
     application
 }
 
@@ -13,6 +14,10 @@ repositories {
 
 kotlin {
     jvmToolchain(21)
+}
+
+ktlint {
+    version.set(libs.versions.ktlint.asProvider())
 }
 
 application {

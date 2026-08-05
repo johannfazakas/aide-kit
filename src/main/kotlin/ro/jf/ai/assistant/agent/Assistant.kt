@@ -8,7 +8,8 @@ import ro.jf.ai.assistant.service.TaskService
 
 const val OPENCODE_ZEN_BASE_URL = "https://opencode.ai/zen"
 
-val ASSISTANT_SYSTEM_PROMPT = """
+val ASSISTANT_SYSTEM_PROMPT =
+    """
     You are a personal assistant helping the user manage aspects of their daily life.
     Your currently available capability is task management: use the provided tools to list, inspect,
     create, update, and complete the user's tasks.
@@ -21,7 +22,7 @@ val ASSISTANT_SYSTEM_PROMPT = """
     "next Friday"; ask the user for the exact date instead of inventing one.
     Conversations are stateless: each message starts fresh, so include task ids and titles in your
     replies to let the user refer to them precisely in follow-up messages.
-""".trimIndent()
+    """.trimIndent()
 
 fun Application.installAssistant(
     taskService: TaskService,

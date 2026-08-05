@@ -8,10 +8,14 @@ import java.util.concurrent.ConcurrentHashMap
 class InMemoryTaskRepository(
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
 ) : TaskRepository {
-
     private val tasks = ConcurrentHashMap<String, Task>()
 
-    override fun create(title: String, dueDate: LocalDate?, category: String?, completed: Boolean): Task {
+    override fun create(
+        title: String,
+        dueDate: LocalDate?,
+        category: String?,
+        completed: Boolean,
+    ): Task {
         val task = Task(idGenerator(), title, dueDate, category, completed)
         tasks[task.id] = task
         return task
@@ -22,8 +26,13 @@ class InMemoryTaskRepository(
 
     override fun findById(id: String): Task? = tasks[id]
 
-    override fun update(id: String, title: String, dueDate: LocalDate?, category: String?, completed: Boolean): Task? =
-        tasks.computeIfPresent(id) { _, _ -> Task(id, title, dueDate, category, completed) }
+    override fun update(
+        id: String,
+        title: String,
+        dueDate: LocalDate?,
+        category: String?,
+        completed: Boolean,
+    ): Task? = tasks.computeIfPresent(id) { _, _ -> Task(id, title, dueDate, category, completed) }
 
     override fun delete(id: String): Boolean = tasks.remove(id) != null
 }

@@ -13,7 +13,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TaskServiceTest {
-
     private var nextId = 0
     private val repository = InMemoryTaskRepository(idGenerator = { "id-${nextId++}" })
     private val service = TaskService(repository)
@@ -32,9 +31,10 @@ class TaskServiceTest {
 
     @Test
     fun `given all fields when create then task is stored with given values`() {
-        val task = service.create(
-            CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), category = "health"),
-        )
+        val task =
+            service.create(
+                CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), category = "health"),
+            )
 
         assertEquals(LocalDate.parse("2026-08-10"), task.dueDate)
         assertEquals("health", task.category)
@@ -75,9 +75,10 @@ class TaskServiceTest {
 
     @Test
     fun `given an existing task when update then replaces all fields and preserves id`() {
-        val task = service.create(
-            CreateTaskRequest(title = "Old", dueDate = LocalDate.parse("2026-07-31"), category = "home"),
-        )
+        val task =
+            service.create(
+                CreateTaskRequest(title = "Old", dueDate = LocalDate.parse("2026-07-31"), category = "home"),
+            )
 
         val updated = service.update(task.id, UpdateTaskRequest(title = "New", completed = true))
 

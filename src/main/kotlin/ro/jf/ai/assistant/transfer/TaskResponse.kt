@@ -1,8 +1,8 @@
 package ro.jf.ai.assistant.transfer
 
-import java.time.LocalDate
 import kotlinx.serialization.Serializable
 import ro.jf.ai.assistant.model.Task
+import java.time.LocalDate
 
 @Serializable
 data class TaskResponse(

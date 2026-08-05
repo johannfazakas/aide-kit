@@ -3,4 +3,6 @@ package ro.jf.ai.assistant.transfer
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ErrorResponse(val message: String)
+data class ErrorResponse(
+    val message: String,
+)

@@ -8,7 +8,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class InMemoryTaskRepositoryTest {
-
     private var nextId = 0
     private val repository = InMemoryTaskRepository(idGenerator = { "id-${nextId++}" })
 

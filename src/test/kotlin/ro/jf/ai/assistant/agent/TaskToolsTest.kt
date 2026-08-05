@@ -15,7 +15,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TaskToolsTest {
-
     private var nextId = 0
     private val repository = InMemoryTaskRepository(idGenerator = { "id-${nextId++}" })
     private val service = TaskService(repository)
@@ -23,7 +22,11 @@ class TaskToolsTest {
     private val json = Json
 
     private fun errorOf(result: String): String? =
-        json.parseToJsonElement(result).jsonObject["error"]?.jsonPrimitive?.content
+        json
+            .parseToJsonElement(result)
+            .jsonObject["error"]
+            ?.jsonPrimitive
+            ?.content
 
     @Test
     fun `given no tasks when listTasks then returns empty json array`() {
@@ -69,9 +72,10 @@ class TaskToolsTest {
 
     @Test
     fun `given title and fields when createTask then task is stored and returned`() {
-        val task = json.decodeFromString<TaskResponse>(
-            tools.createTask(title = "Dentist", dueDate = "2026-08-10", category = "health"),
-        )
+        val task =
+            json.decodeFromString<TaskResponse>(
+                tools.createTask(title = "Dentist", dueDate = "2026-08-10", category = "health"),
+            )
 
         assertEquals("Dentist", task.title)
         assertEquals(LocalDate.parse("2026-08-10"), task.dueDate)
@@ -99,9 +103,16 @@ class TaskToolsTest {
     fun `given a stored task when updateTask with completed then task is completed`() {
         val created = service.create(CreateTaskRequest(title = "Dentist", category = "health"))
 
-        val task = json.decodeFromString<TaskResponse>(
-            tools.updateTask(id = created.id, title = "Dentist", dueDate = null, category = "health", completed = true),
-        )
+        val task =
+            json.decodeFromString<TaskResponse>(
+                tools.updateTask(
+                    id = created.id,
+                    title = "Dentist",
+                    dueDate = null,
+                    category = "health",
+                    completed = true,
+                ),
+            )
 
         assertTrue(task.completed)
         assertEquals(true, repository.findById(created.id)?.completed)
@@ -109,13 +120,15 @@ class TaskToolsTest {
 
     @Test
     fun `given a stored task when updateTask omitting fields then fields are cleared`() {
-        val created = service.create(
-            CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), category = "health"),
-        )
+        val created =
+            service.create(
+                CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), category = "health"),
+            )
 
-        val task = json.decodeFromString<TaskResponse>(
-            tools.updateTask(id = created.id, title = "Dentist"),
-        )
+        val task =
+            json.decodeFromString<TaskResponse>(
+                tools.updateTask(id = created.id, title = "Dentist"),
+            )
 
         assertNull(task.dueDate)
         assertNull(task.category)

@@ -1,5 +1,6 @@
 package ro.jf.ai.assistant.routes
 
+import ai.koog.agents.core.agent.exception.AIAgentException
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -9,7 +10,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import ai.koog.agents.core.agent.exception.AIAgentException
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -25,89 +25,102 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ChatApiIntegrationTest {
-
-    private fun chatApiTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) = testApplication {
-        application { module(openCodeApiKey = null) }
-        val client = createClient {
-            install(ContentNegotiation) { json() }
-        }
-        block(client)
-    }
-
-    @Test
-    fun `given no api key when posting a chat message then responds 503 with error`() = chatApiTest { client ->
-        val response = client.post("/api/v1/chat") {
-            contentType(ContentType.Application.Json)
-            setBody(ChatRequest(message = "What tasks do I have?"))
+    private fun chatApiTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =
+        testApplication {
+            application { module(openCodeApiKey = null) }
+            val client =
+                createClient {
+                    install(ContentNegotiation) { json() }
+                }
+            block(client)
         }
 
-        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
-        assertTrue(response.body<ErrorResponse>().message.contains("OPENCODE_API_KEY"))
-    }
-
     @Test
-    fun `given a blank message when posting a chat message then responds 400`() = chatApiTest { client ->
-        val response = client.post("/api/v1/chat") {
-            contentType(ContentType.Application.Json)
-            setBody(ChatRequest(message = "   "))
+    fun `given no api key when posting a chat message then responds 503 with error`() =
+        chatApiTest { client ->
+            val response =
+                client.post("/api/v1/chat") {
+                    contentType(ContentType.Application.Json)
+                    setBody(ChatRequest(message = "What tasks do I have?"))
+                }
+
+            assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+            assertTrue(response.body<ErrorResponse>().message.contains("OPENCODE_API_KEY"))
         }
 
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertTrue(response.body<ErrorResponse>().message.contains("blank"))
-    }
-
     @Test
-    fun `given a body without message when posting a chat message then responds 400`() = chatApiTest { client ->
-        val response = client.post("/api/v1/chat") {
-            contentType(ContentType.Application.Json)
-            setBody("{}")
+    fun `given a blank message when posting a chat message then responds 400`() =
+        chatApiTest { client ->
+            val response =
+                client.post("/api/v1/chat") {
+                    contentType(ContentType.Application.Json)
+                    setBody(ChatRequest(message = "   "))
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.body<ErrorResponse>().message.contains("blank"))
         }
 
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-    }
-
     @Test
-    fun `given an api key when application starts then assistant installs and task api works`() = testApplication {
-        application { module(openCodeApiKey = "test-key") }
-        val client = createClient {
-            install(ContentNegotiation) { json() }
+    fun `given a body without message when posting a chat message then responds 400`() =
+        chatApiTest { client ->
+            val response =
+                client.post("/api/v1/chat") {
+                    contentType(ContentType.Application.Json)
+                    setBody("{}")
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
         }
 
-        val response = client.get("/api/v1/tasks")
+    @Test
+    fun `given an api key when application starts then assistant installs and task api works`() =
+        testApplication {
+            application { module(openCodeApiKey = "test-key") }
+            val client =
+                createClient {
+                    install(ContentNegotiation) { json() }
+                }
 
-        assertEquals(HttpStatusCode.OK, response.status)
-    }
+            val response = client.get("/api/v1/tasks")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
 
     @Test
-    fun `given an agent failure when handling a request then responds 502 with cause`() = testApplication {
-        application {
-            module(openCodeApiKey = null)
-            routing {
-                get("/test/agent-failure") {
-                    throw AIAgentException("Error from client: OpenAILLMClient: Invalid API key")
+    fun `given an agent failure when handling a request then responds 502 with cause`() =
+        testApplication {
+            application {
+                module(openCodeApiKey = null)
+                routing {
+                    get("/test/agent-failure") {
+                        throw AIAgentException("Error from client: OpenAILLMClient: Invalid API key")
+                    }
                 }
             }
-        }
-        val client = createClient {
-            install(ContentNegotiation) { json() }
-        }
+            val client =
+                createClient {
+                    install(ContentNegotiation) { json() }
+                }
 
-        val response = client.get("/test/agent-failure")
+            val response = client.get("/test/agent-failure")
 
-        assertEquals(HttpStatusCode.BadGateway, response.status)
-        assertTrue(response.body<ErrorResponse>().message.contains("Invalid API key"))
-    }
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            assertTrue(response.body<ErrorResponse>().message.contains("Invalid API key"))
+        }
 
     @Test
-    fun `given no api key when using the task api then behaves as without assistant`() = chatApiTest { client ->
-        val createResponse = client.post("/api/v1/tasks") {
-            contentType(ContentType.Application.Json)
-            setBody(CreateTaskRequest(title = "Pay rent"))
-        }
-        assertEquals(HttpStatusCode.Created, createResponse.status)
+    fun `given no api key when using the task api then behaves as without assistant`() =
+        chatApiTest { client ->
+            val createResponse =
+                client.post("/api/v1/tasks") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateTaskRequest(title = "Pay rent"))
+                }
+            assertEquals(HttpStatusCode.Created, createResponse.status)
 
-        val listResponse = client.get("/api/v1/tasks")
-        assertEquals(HttpStatusCode.OK, listResponse.status)
-        assertEquals(listOf("Pay rent"), listResponse.body<List<TaskResponse>>().map { it.title })
-    }
+            val listResponse = client.get("/api/v1/tasks")
+            assertEquals(HttpStatusCode.OK, listResponse.status)
+            assertEquals(listOf("Pay rent"), listResponse.body<List<TaskResponse>>().map { it.title })
+        }
 }

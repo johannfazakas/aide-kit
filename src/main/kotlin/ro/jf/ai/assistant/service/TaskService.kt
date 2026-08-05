@@ -6,8 +6,9 @@ import ro.jf.ai.assistant.repository.TaskRepository
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
 
-class TaskService(private val repository: TaskRepository) {
-
+class TaskService(
+    private val repository: TaskRepository,
+) {
     fun create(request: CreateTaskRequest): Task {
         require(request.title.isNotBlank()) { "Title must not be blank" }
         return repository.create(request.title, request.dueDate, request.category, request.completed)
@@ -17,7 +18,10 @@ class TaskService(private val repository: TaskRepository) {
 
     fun get(id: String): Task = repository.findById(id) ?: throw TaskNotFoundException(id)
 
-    fun update(id: String, request: UpdateTaskRequest): Task {
+    fun update(
+        id: String,
+        request: UpdateTaskRequest,
+    ): Task {
         require(request.title.isNotBlank()) { "Title must not be blank" }
         return repository.update(id, request.title, request.dueDate, request.category, request.completed)
             ?: throw TaskNotFoundException(id)

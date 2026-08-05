@@ -15,33 +15,36 @@ import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
 @LLMDescription("Tools for managing the user's tasks")
-class TaskTools(private val service: TaskService) : ToolSet {
-
+class TaskTools(
+    private val service: TaskService,
+) : ToolSet {
     private val json = Json
 
     @Tool
     @LLMDescription(
         "List the user's tasks, optionally filtered by category. Returns a JSON array of tasks. " +
-            "To find a task described by its content, list without a category filter and match by title."
+            "To find a task described by its content, list without a category filter and match by title.",
     )
     fun listTasks(
         @LLMDescription(
             "Category to filter by; omit to list all tasks. Only pass a category the user explicitly named — " +
-                "it is a user-defined label such as 'home' or 'work', never guessed from task content"
+                "it is a user-defined label such as 'home' or 'work', never guessed from task content",
         )
         category: String? = null,
-    ): String = guarded {
-        json.encodeToString(service.list(category).map { it.toResponse() })
-    }
+    ): String =
+        guarded {
+            json.encodeToString(service.list(category).map { it.toResponse() })
+        }
 
     @Tool
     @LLMDescription("Get a single task by its id. Returns the task as JSON.")
     fun getTask(
         @LLMDescription("The id of the task")
         id: String,
-    ): String = guarded {
-        json.encodeToString(service.get(id).toResponse())
-    }
+    ): String =
+        guarded {
+            json.encodeToString(service.get(id).toResponse())
+        }
 
     @Tool
     @LLMDescription("Create a new task. Returns the created task as JSON, including its generated id.")
@@ -52,16 +55,17 @@ class TaskTools(private val service: TaskService) : ToolSet {
         dueDate: String? = null,
         @LLMDescription("Category of the task; omit if uncategorized")
         category: String? = null,
-    ): String = guarded {
-        val task = service.create(CreateTaskRequest(title, dueDate.toLocalDate(), category))
-        json.encodeToString(task.toResponse())
-    }
+    ): String =
+        guarded {
+            val task = service.create(CreateTaskRequest(title, dueDate.toLocalDate(), category))
+            json.encodeToString(task.toResponse())
+        }
 
     @Tool
     @LLMDescription(
         "Update a task by id, replacing all its fields — including marking it completed. " +
             "Fields left out are cleared, so fetch the task first and pass along the values that must be kept. " +
-            "Returns the updated task as JSON."
+            "Returns the updated task as JSON.",
     )
     fun updateTask(
         @LLMDescription("The id of the task to update")
@@ -74,25 +78,29 @@ class TaskTools(private val service: TaskService) : ToolSet {
         category: String? = null,
         @LLMDescription("Whether the task is completed")
         completed: Boolean = false,
-    ): String = guarded {
-        val task = service.update(id, UpdateTaskRequest(title, dueDate.toLocalDate(), category, completed))
-        json.encodeToString(task.toResponse())
-    }
+    ): String =
+        guarded {
+            val task = service.update(id, UpdateTaskRequest(title, dueDate.toLocalDate(), category, completed))
+            json.encodeToString(task.toResponse())
+        }
 
     private fun String?.toLocalDate(): LocalDate? = this?.let(LocalDate::parse)
 
-    private fun guarded(block: () -> String): String = try {
-        block()
-    } catch (e: TaskNotFoundException) {
-        error(e.message ?: "Task not found")
-    } catch (e: IllegalArgumentException) {
-        error(e.message ?: "Invalid input")
-    } catch (e: DateTimeParseException) {
-        error("Invalid date '${e.parsedString}': use ISO-8601 format (yyyy-MM-dd)")
-    }
+    private fun guarded(block: () -> String): String =
+        try {
+            block()
+        } catch (e: TaskNotFoundException) {
+            error(e.message ?: "Task not found")
+        } catch (e: IllegalArgumentException) {
+            error(e.message ?: "Invalid input")
+        } catch (e: DateTimeParseException) {
+            error("Invalid date '${e.parsedString}': use ISO-8601 format (yyyy-MM-dd)")
+        }
 
     private fun error(message: String): String = json.encodeToString(ToolError(message))
 
     @Serializable
-    private data class ToolError(val error: String)
+    private data class ToolError(
+        val error: String,
+    )
 }

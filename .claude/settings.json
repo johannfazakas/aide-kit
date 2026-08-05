@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/ktlint-check.sh",
+            "timeout": 60,
+            "statusMessage": "Running ktlint on edited file"
+          }
+        ]
+      }
+    ]
+  }
+}

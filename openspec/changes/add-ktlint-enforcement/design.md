@@ -46,6 +46,8 @@ Adds `ktlintCheck`/`ktlintFormat` and wires `ktlintCheck` into `check`, so `buil
 
 Ktlint 1.x's default, strictest and most consistent (trailing commas, wrapping). Chosen over `intellij_idea` (smaller baseline diff but permanently diverges from ktlint's defaults). Accepting a larger one-time reformat in exchange for never fighting the default. Set `ktlint_code_style = ktlint_official` in a new `.editorconfig`.
 
+Discovered during implementation: since ktlint 1.7 the `no-unused-imports` rule no longer runs by default (false-positive history, slated for removal in ktlint 2.0). Because unused imports were the primary motivation for this change, the rule is explicitly opted in via `ktlint_standard_no-unused-imports = enabled` in `.editorconfig`. Revisit when upgrading to ktlint 2.0, which drops the rule entirely.
+
 ### Version pinning: single source in `libs.versions.toml`
 
 The catalog holds two entries: the plugin version and the ktlint engine version. Gradle reads both natively; the hook script greps the engine version from the catalog at runtime. Exact versions (latest stable) are resolved at implementation time.

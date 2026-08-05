@@ -28,9 +28,13 @@ A personal aid application: a backend where AI agents help manage aspects of dai
 ## Run
 
 ```shell
-./gradlew build        # build + all tests (no LLM calls involved)
-./gradlew run          # start server on http://localhost:8080
+./gradlew build         # build + lint + all tests (no LLM calls involved)
+./gradlew run           # start server on http://localhost:8080
+./gradlew ktlintCheck   # lint only
+./gradlew ktlintFormat  # auto-fix lint violations
 ```
+
+Code style is enforced by [ktlint](https://pinterest.github.io/ktlint/) (`ktlint_official`, configured in `.editorconfig`); `ktlintCheck` is part of `build`. CI (GitHub Actions) runs `./gradlew build` on pushes to `main` and pull requests.
 
 Assistant configuration (optional — without it the task API works and chat returns 503):
 

@@ -9,6 +9,7 @@ Personal aid application: Ktor backend where AI agents help with daily life, sta
 - Layering is `routes` → `service` → `repository`; the assistant's tools (`agent/TaskTools`) must go through `TaskService`, never the repository directly.
 - The assistant is stateless by design (no conversation memory yet) and deliberately has no delete tool.
 - Unit tests use given-when-then naming; integration tests live under the package of the routes they exercise (`routes/`). Nothing in the build calls an LLM — keep it that way.
+- Code style is enforced by ktlint (`ktlint_official` + `no-unused-imports`, pinned in `gradle/libs.versions.toml`, configured in `.editorconfig`). A `PostToolUse` hook lint-checks every `.kt`/`.kts` file you edit and blocks on violations — run `./gradlew ktlintFormat` to auto-fix rather than hand-fixing style errors. CI enforces the same rules via `./gradlew build`.
 
 ## Environment
 

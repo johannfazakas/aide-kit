@@ -8,7 +8,6 @@ import kotlinx.serialization.json.Json
 import ro.jf.ai.assistant.exception.TaskNotFoundException
 import ro.jf.ai.assistant.service.TaskService
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
-import ro.jf.ai.assistant.transfer.TaskResponse
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
 import ro.jf.ai.assistant.transfer.toResponse
 import java.time.LocalDate

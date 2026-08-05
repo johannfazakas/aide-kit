@@ -51,3 +51,51 @@ Content-Type: application/json
 
 ### Error example: unknown id returns 404
 GET http://localhost:8080/api/v1/tasks/does-not-exist
+
+### Chat: create a task via the assistant
+POST http://localhost:8080/api/v1/chat
+Content-Type: application/json
+
+{
+  "message": "Add a task to buy groceries in the home category, due on 2026-08-10."
+}
+
+### Chat: list tasks via the assistant
+POST http://localhost:8080/api/v1/chat
+Content-Type: application/json
+
+{
+  "message": "What tasks do I have in the home category?"
+}
+
+### Chat: complete a task via the assistant
+POST http://localhost:8080/api/v1/chat
+Content-Type: application/json
+
+{
+  "message": "Mark the task about groceries as done."
+}
+
+### Chat: ambiguous relative date - assistant should ask for the exact date
+POST http://localhost:8080/api/v1/chat
+Content-Type: application/json
+
+{
+  "message": "Remind me to call the dentist tomorrow."
+}
+
+### Chat: deletion is refused - assistant explains it cannot delete
+POST http://localhost:8080/api/v1/chat
+Content-Type: application/json
+
+{
+  "message": "Delete all my completed tasks."
+}
+
+### Chat error example: blank message is rejected with 400
+POST http://localhost:8080/api/v1/chat
+Content-Type: application/json
+
+{
+  "message": "  "
+}

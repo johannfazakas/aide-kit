@@ -1,4 +1,4 @@
-package ro.jf.ai.assistant
+package ro.jf.ai.assistant.routes
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -15,6 +15,7 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import ro.jf.ai.assistant.module
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.ErrorResponse
 import ro.jf.ai.assistant.transfer.TaskResponse

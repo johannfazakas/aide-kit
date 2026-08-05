@@ -1,87 +1,57 @@
-# AI Assistant
+# aide-kit
 
-A personal aid application. The long-term goal is a backend service and a mobile app where one or more AI agents help manage aspects of daily life — starting with task management, with more capabilities to come.
+A personal aid application: a backend where AI agents help manage aspects of daily life. The long-term vision includes a mobile client and more agent capabilities; the current slice is task management, available both as a REST API and through a conversational AI assistant.
 
-The current slice is an HTTP API for managing tasks (stored in memory) plus a conversational AI assistant that manages those tasks through natural language.
+## Architecture
+
+```
+                 ┌──────────────────── Ktor server ────────────────────┐
+                 │                                                     │
+ REST client ───▶│  /api/v1/tasks ────────────▶ TaskService ──▶ TaskRepository
+                 │                                   ▲            (in-memory)
+ chat client ───▶│  /api/v1/chat ──▶ Koog agent ── TaskTools           │
+                 │                       │                             │
+                 └───────────────────────│─────────────────────────────┘
+                                         ▼
+                          OpenCode Zen gateway (glm-5.2)
+```
+
+- `routes` → `service` → `repository` layering; the agent's tools reuse the same `TaskService` as the REST API.
+- The assistant (package `agent`) is a [Koog](https://github.com/JetBrains/koog) agent wired through the `koog-ktor` plugin. It is stateless — every chat request is a fresh conversation — and it can list, create, update, and complete tasks, but not delete them.
+- Requirements and change history live in `openspec/` ([OpenSpec](https://github.com/Fission-AI/OpenSpec) workflow: specs under `openspec/specs/`, changes under `openspec/changes/`).
 
 ## Tech Stack
 
-- Kotlin on JDK 21
-- Ktor 3 (Netty engine, kotlinx.serialization)
-- [Koog](https://github.com/JetBrains/koog) agent framework (`koog-ktor` plugin)
-- Gradle (Kotlin DSL, version catalog)
+- Kotlin (JDK 21), Ktor 3 (Netty, kotlinx.serialization), Gradle with version catalog
+- Koog agent framework (`koog-ktor` plugin) with an OpenAI-compatible client against OpenCode Zen
 
-## Build & Run
-
-Build and run all tests:
+## Run
 
 ```shell
-./gradlew build
+./gradlew build        # build + all tests (no LLM calls involved)
+./gradlew run          # start server on http://localhost:8080
 ```
 
-Run only the tests:
+Assistant configuration (optional — without it the task API works and chat returns 503):
 
 ```shell
-./gradlew test
-```
-
-Start the server (listens on http://localhost:8080):
-
-```shell
-./gradlew run
+export OPENCODE_API_KEY=<your key>                     # opencode.ai key
+export OPENCODE_BASE_URL=https://opencode.ai/zen/go    # Go subscription; omit for pay-per-token /zen
 ```
 
 ## API
 
-Tasks are managed under `/api/v1/tasks`. A task has an `id` (server-generated string), a `title` (required), an optional `dueDate` (`yyyy-MM-dd`), an optional free-form `category`, and a `completed` flag.
+| Method | Path                 | Description                                       |
+|--------|----------------------|---------------------------------------------------|
+| POST   | `/api/v1/tasks`      | Create a task                                     |
+| GET    | `/api/v1/tasks`      | List tasks (optional `?category=`)                |
+| GET    | `/api/v1/tasks/{id}` | Get a task                                        |
+| PUT    | `/api/v1/tasks/{id}` | Full-replace update (also used to mark completed) |
+| DELETE | `/api/v1/tasks/{id}` | Delete a task                                     |
+| POST   | `/api/v1/chat`       | Talk to the assistant: `{"message"}` → `{"reply"}` |
 
-| Method | Path                        | Description                          | Success |
-|--------|-----------------------------|--------------------------------------|---------|
-| POST   | `/api/v1/tasks`             | Create a task                        | 201     |
-| GET    | `/api/v1/tasks`             | List tasks (optional `?category=`)   | 200     |
-| GET    | `/api/v1/tasks/{id}`        | Get a task by id                     | 200     |
-| PUT    | `/api/v1/tasks/{id}`        | Full-replace update (omitted optional fields are unset) | 200 |
-| DELETE | `/api/v1/tasks/{id}`        | Delete a task                        | 204     |
+Errors are JSON `{"message": "..."}`: `400` invalid input, `404` unknown id, `502` LLM gateway failure, `503` assistant not configured.
 
-Errors return a JSON body `{"message": "..."}` — `404` for unknown ids, `400` for invalid input (missing/blank title, malformed JSON, invalid date format).
+[api.http](api.http) exercises every endpoint (JetBrains HTTP client format, runnable from IntelliJ).
 
-Marking a task done is a `PUT` with `"completed": true` — there is no separate complete endpoint.
-
-Example:
-
-```shell
-curl -X POST http://localhost:8080/api/v1/tasks \
-  -H 'Content-Type: application/json' \
-  -d '{"title": "Pay rent", "dueDate": "2026-07-31", "category": "home"}'
-```
-
-The [api.http](api.http) file (JetBrains HTTP client format) exercises every endpoint and can be run directly from IntelliJ IDEA.
-
-## Assistant
-
-`POST /api/v1/chat` takes `{"message": "..."}` and returns `{"reply": "..."}`. The assistant is a Koog agent that manages tasks through tools backed by the same service as the REST API: it can list, inspect, create, update, and complete tasks — it cannot delete them yet.
-
-Conversations are stateless: each request starts fresh, with no memory of previous exchanges. The assistant does not know the current date, so it asks for exact dates instead of resolving "tomorrow". When an instruction is ambiguous, it asks a clarifying question in its reply.
-
-### Configuration
-
-The assistant calls the [OpenCode Zen](https://opencode.ai/docs/zen/) gateway (OpenAI-compatible API) with the `glm-5.2` model. It needs an API key:
-
-```shell
-export OPENCODE_API_KEY=<your key>
-./gradlew run
-```
-
-By default requests go to the pay-per-token endpoint (`https://opencode.ai/zen`). On the opencode Go subscription, point `OPENCODE_BASE_URL` at the subscription endpoint instead:
-
-```shell
-export OPENCODE_BASE_URL=https://opencode.ai/zen/go
-```
-
-Without `OPENCODE_API_KEY`, the server still starts and the task API works normally; chat requests return `503`. Chat validation errors (missing/blank `message`) return `400`. Failures from the LLM gateway (rejected key, model errors, outages) return `502` with the underlying reason in the error body.
-
-The model is defined in one place (`agent/AssistantModel.kt`) — swap the `id` for another [OpenCode Zen model](https://opencode.ai/docs/zen/) to change it. Note that chat requests call a paid external API; nothing calls the LLM at build or test time.
-
-## Storage Caveat
-
-Tasks are held **in memory only** — all data is lost when the server stops. Persistence is planned as a future change.
+**Storage caveat**: tasks live in memory only — data is lost on restart; persistence is a future change.

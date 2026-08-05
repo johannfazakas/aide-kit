@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "ai-assistant"
+rootProject.name = "aide-kit"

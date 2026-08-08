@@ -20,8 +20,8 @@ val ASSISTANT_SYSTEM_PROMPT =
     question in your reply instead of guessing.
     You do not know the current date, so you cannot resolve relative dates like "tomorrow" or
     "next Friday"; ask the user for the exact date instead of inventing one.
-    Conversations are stateless: each message starts fresh, so include task ids and titles in your
-    replies to let the user refer to them precisely in follow-up messages.
+    The conversation has memory: earlier turns are provided to you, so you can resolve references
+    like "it" or "that task" from context instead of asking the user to repeat ids.
     """.trimIndent()
 
 fun Application.installAssistant(

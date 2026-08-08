@@ -52,10 +52,18 @@ export OPENCODE_BASE_URL=https://opencode.ai/zen/go    # Go subscription; omit f
 | GET    | `/api/v1/tasks/{id}` | Get a task                                        |
 | PUT    | `/api/v1/tasks/{id}` | Full-replace update (also used to mark completed) |
 | DELETE | `/api/v1/tasks/{id}` | Delete a task                                     |
-| POST   | `/api/v1/chat`       | Talk to the assistant: `{"message"}` → `{"reply"}` |
+| POST   | `/api/v1/chat`       | Talk to the assistant: `{"message", "sessionId"?}` → `{"sessionId", "reply"}` |
 
 Errors are JSON `{"message": "..."}`: `400` invalid input, `404` unknown id, `502` LLM gateway failure, `503` assistant not configured.
 
 [api.http](api.http) exercises every endpoint (JetBrains HTTP client format, runnable from IntelliJ).
+
+## Chat
+
+Open [http://localhost:8080/](http://localhost:8080/) for a minimal chat page. Type a message and the assistant replies; the conversation has memory, so you can refer back ("mark it done") without repeating task ids.
+
+Memory is per session: the first message mints a `sessionId` (returned in the response and reused by the page for follow-ups); omitting it — or reloading the page — starts a fresh conversation. Send `sessionId` yourself when calling `/api/v1/chat` directly to continue a conversation.
+
+**Conversation caveats**: history is in memory only (lost on restart) and bounded to the most recent turns, so a very long conversation forgets its earliest messages.
 
 **Storage caveat**: tasks live in memory only — data is lost on restart; persistence is a future change.

@@ -8,11 +8,18 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import ro.jf.ai.assistant.agent.AssistantModel
+import ro.jf.ai.assistant.agent.buildAgentInput
+import ro.jf.ai.assistant.conversation.ConversationMessage
+import ro.jf.ai.assistant.conversation.ConversationRole
+import ro.jf.ai.assistant.conversation.InMemoryConversationStore
 import ro.jf.ai.assistant.transfer.ChatRequest
 import ro.jf.ai.assistant.transfer.ChatResponse
 import ro.jf.ai.assistant.transfer.ErrorResponse
 
-fun Route.chatRoutes(assistantConfigured: Boolean) {
+fun Route.chatRoutes(
+    assistantConfigured: Boolean,
+    conversationStore: InMemoryConversationStore,
+) {
     route("/api/v1/chat") {
         post {
             val request = call.receive<ChatRequest>()
@@ -23,8 +30,15 @@ fun Route.chatRoutes(assistantConfigured: Boolean) {
                     ErrorResponse("Assistant is not configured; set the OPENCODE_API_KEY environment variable"),
                 )
             } else {
-                val reply = aiAgent(request.message, model = AssistantModel.GLM_5_2)
-                call.respond(ChatResponse(reply))
+                val sessionId = request.sessionId ?: conversationStore.newSessionId()
+                val input = buildAgentInput(conversationStore.history(sessionId), request.message)
+                val reply = aiAgent(input, model = AssistantModel.GLM_5_2)
+                conversationStore.append(
+                    sessionId,
+                    ConversationMessage(ConversationRole.USER, request.message),
+                    ConversationMessage(ConversationRole.ASSISTANT, reply),
+                )
+                call.respond(ChatResponse(sessionId, reply))
             }
         }
     }

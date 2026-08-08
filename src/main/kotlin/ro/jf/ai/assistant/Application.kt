@@ -4,12 +4,14 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.http.content.staticResources
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import ro.jf.ai.assistant.agent.OPENCODE_ZEN_BASE_URL
 import ro.jf.ai.assistant.agent.installAssistant
 import ro.jf.ai.assistant.config.configureStatusPages
+import ro.jf.ai.assistant.conversation.InMemoryConversationStore
 import ro.jf.ai.assistant.repository.InMemoryTaskRepository
 import ro.jf.ai.assistant.repository.TaskRepository
 import ro.jf.ai.assistant.routes.chatRoutes
@@ -32,11 +34,13 @@ fun Application.module(
     }
     configureStatusPages()
     val service = TaskService(repository)
+    val conversationStore = InMemoryConversationStore()
     if (apiKey != null) {
         installAssistant(service, apiKey, baseUrl)
     }
     routing {
+        staticResources("/", "web", index = "chat.html")
         taskRoutes(service)
-        chatRoutes(assistantConfigured = apiKey != null)
+        chatRoutes(assistantConfigured = apiKey != null, conversationStore = conversationStore)
     }
 }

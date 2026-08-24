@@ -40,7 +40,7 @@ Today the chat flow is a single line: `ChatRoutes.kt` calls `aiAgent(request.mes
 
 ### Session identity: server-minted, client-echoed opaque id
 
-First request with no `sessionId` → server generates one (UUID) and returns it in `ChatResponse`. Client sends it back on later turns. New conversation = omit the id. *Alternative — single global conversation*: simpler but only one thread and needs an explicit reset endpoint; rejected because sessions are the planned direction and cost almost nothing. *Alternative — client-generated ids*: lets the client collide/forge ids; server-minted is safer and no harder.
+First request with no `sessionId` → server generates one (UUID) and returns it in `ChatResponse`. Client sends it back on later turns. New conversation = omit the id. An unknown `sessionId` (forged, or stale after a restart) is not adopted — the server mints a fresh id and returns it, so only server-minted ids ever key the store. *Alternative — single global conversation*: simpler but only one thread and needs an explicit reset endpoint; rejected because sessions are the planned direction and cost almost nothing. *Alternative — client-generated ids*: lets the client collide/forge ids; server-minted is safer and no harder.
 
 ### Storage: in-memory, thread-safe, bounded window
 

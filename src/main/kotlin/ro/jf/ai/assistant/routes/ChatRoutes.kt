@@ -30,7 +30,7 @@ fun Route.chatRoutes(
                     ErrorResponse("Assistant is not configured; set the OPENCODE_API_KEY environment variable"),
                 )
             } else {
-                val sessionId = request.sessionId ?: conversationStore.newSessionId()
+                val sessionId = conversationStore.resolveSessionId(request.sessionId)
                 val input = buildAgentInput(conversationStore.history(sessionId), request.message)
                 val reply = aiAgent(input, model = AssistantModel.GLM_5_2)
                 conversationStore.append(

@@ -11,7 +11,8 @@ class InMemoryConversationStore(
 ) {
     private val conversations = ConcurrentHashMap<String, List<ConversationMessage>>()
 
-    fun newSessionId(): String = idGenerator()
+    fun resolveSessionId(requestedId: String?): String =
+        requestedId?.takeIf(conversations::containsKey) ?: idGenerator()
 
     fun history(sessionId: String): List<ConversationMessage> = conversations[sessionId] ?: emptyList()
 

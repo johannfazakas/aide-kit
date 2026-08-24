@@ -7,7 +7,7 @@ Personal aid application: Ktor backend where AI agents help with daily life, sta
 - Development follows the OpenSpec workflow (`/opsx:*` commands): non-trivial changes go through a change proposal under `openspec/changes/`, and `openspec/specs/` holds the current requirements. Sync and archive changes when done.
 - Keep README.md accurate, simple, and concise. When behavior, architecture, or commands change, update it as part of the same change — it should always reflect reality without growing bloated.
 - Layering is `routes` → `service` → `repository`; the assistant's tools (`agent/TaskTools`) must go through `TaskService`, never the repository directly.
-- The assistant is stateless by design (no conversation memory yet) and deliberately has no delete tool.
+- The assistant has session-scoped conversation memory (in-memory, bounded window, lost on restart) and deliberately has no delete tool. Unknown client-supplied session ids are not continued — the server mints a fresh id instead.
 - Unit tests use given-when-then naming; integration tests live under the package of the routes they exercise (`routes/`). Nothing in the build calls an LLM — keep it that way.
 - Code style is enforced by ktlint (`ktlint_official` + `no-unused-imports`, pinned in `gradle/libs.versions.toml`, configured in `.editorconfig`). A `PostToolUse` hook lint-checks every `.kt`/`.kts` file you edit and blocks on violations — run `./gradlew ktlintFormat` to auto-fix rather than hand-fixing style errors. CI enforces the same rules via `./gradlew build`.
 
@@ -19,4 +19,4 @@ Personal aid application: Ktor backend where AI agents help with daily life, sta
 
 ## Planned directions
 
-Conversation memory (sessions), a current-date tool (agent currently asks instead of resolving "tomorrow"), agent-side deletion, persistent storage, mobile client.
+A current-date tool (agent currently asks instead of resolving "tomorrow"), agent-side deletion, persistent storage (tasks and conversations), mobile client.

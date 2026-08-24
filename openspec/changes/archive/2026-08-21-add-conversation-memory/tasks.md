@@ -24,5 +24,5 @@
 
 ## 5. Verification & docs
 
-- [~] 5.1 Run `./gradlew build` (lint + tests) and confirm green — DONE; app boots, serves chat.html at `/`, endpoint wired (503 degraded, 400 blank) — DONE. Live multi-turn conversation through the page (create a task, then refer to it without its id) — PENDING owner's `OPENCODE_API_KEY` (not available in this environment)
+- [x] 5.1 Run `./gradlew build` (lint + tests) and confirm green — DONE; app boots, serves chat.html at `/`, endpoint wired (503 degraded, 400 blank) — DONE. Live multi-turn conversation — DONE: session memory resolves references across turns and `TaskTools` calls fire mid-conversation (`createTask` executed on the 5th exchange of a session). Surfaced an unrelated pre-existing defect (reproduced in a stateless fresh session): glm-5.2 only executes tool calls from its first response of a run; after tool results it narrates ("let me mark it done") and the run ends, so fetch-then-update flows never reach `updateTask`. Tracked as a follow-up change.
 - [x] 5.2 Update `README.md`: document the chat page, session behavior, the bounded-history caveat, and the in-memory (lost on restart) caveat

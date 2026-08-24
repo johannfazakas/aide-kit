@@ -6,15 +6,30 @@ import kotlin.test.assertTrue
 
 class InMemoryConversationStoreTest {
     @Test
-    fun `given a sequential id generator when generating session ids then each call advances`() {
+    fun `given no requested id when resolving a session then a new id is minted`() {
         val ids = ArrayDeque(listOf("1", "2"))
         val store = InMemoryConversationStore(idGenerator = ids::removeFirst)
 
-        val first = store.newSessionId()
-        val second = store.newSessionId()
+        val first = store.resolveSessionId(null)
+        val second = store.resolveSessionId(null)
 
         assertEquals("1", first)
         assertEquals("2", second)
+    }
+
+    @Test
+    fun `given a known session id when resolving then the same id is returned`() {
+        val store = InMemoryConversationStore()
+        store.append("known", ConversationMessage(ConversationRole.USER, "hello"))
+
+        assertEquals("known", store.resolveSessionId("known"))
+    }
+
+    @Test
+    fun `given an unknown session id when resolving then a new id is minted instead`() {
+        val store = InMemoryConversationStore(idGenerator = { "minted" })
+
+        assertEquals("minted", store.resolveSessionId("forged"))
     }
 
     @Test

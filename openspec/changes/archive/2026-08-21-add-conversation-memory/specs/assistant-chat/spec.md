@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Chat endpoint
-The system SHALL expose `POST /api/v1/chat` accepting a JSON body `{"sessionId": "<id>"?, "message": "<text>"}` where `sessionId` is optional, and responding with a JSON body `{"sessionId": "<id>", "reply": "<text>"}`. When the request omits `sessionId`, the system SHALL mint a new session id and return it. When the request includes a `sessionId`, the system SHALL continue that conversation. The returned `sessionId` identifies the conversation for follow-up requests.
+The system SHALL expose `POST /api/v1/chat` accepting a JSON body `{"sessionId": "<id>"?, "message": "<text>"}` where `sessionId` is optional, and responding with a JSON body `{"sessionId": "<id>", "reply": "<text>"}`. When the request omits `sessionId`, the system SHALL mint a new session id and return it. When the request includes a known `sessionId`, the system SHALL continue that conversation. When the request includes an unknown `sessionId`, the system SHALL NOT adopt it — it SHALL mint a fresh session id and return it. The returned `sessionId` identifies the conversation for follow-up requests.
 
 #### Scenario: Successful chat exchange
 - **WHEN** a client posts `{"message": "..."}` with a non-blank message and the LLM provider is configured
@@ -16,6 +16,10 @@ The system SHALL expose `POST /api/v1/chat` accepting a JSON body `{"sessionId":
 #### Scenario: Starting a fresh conversation
 - **WHEN** a client posts a message without a `sessionId`
 - **THEN** the system creates a new conversation, returns its `sessionId`, and the reply does not reflect any prior conversation
+
+#### Scenario: Unknown session id
+- **WHEN** a client posts a message with a `sessionId` the server did not mint (or one lost to a restart)
+- **THEN** the system starts a fresh conversation under a newly minted `sessionId` and returns that id, rather than adopting the client-supplied one
 
 #### Scenario: Blank or missing message
 - **WHEN** a client posts a body with a missing or blank `message`

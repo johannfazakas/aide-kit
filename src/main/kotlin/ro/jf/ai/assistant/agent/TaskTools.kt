@@ -63,8 +63,9 @@ class TaskTools(
     @Tool
     @LLMDescription(
         "Update a task by id, replacing all its fields — including marking it completed. " +
-            "Fields left out are cleared, so fetch the task first and pass along the values that must be kept. " +
-            "Returns the updated task as JSON.",
+            "Fields left out are cleared, so pass along the values that must be kept. Fetch the task first " +
+            "only when you do not already know its current values from the conversation or an earlier " +
+            "tool result. Returns the updated task as JSON.",
     )
     fun updateTask(
         @LLMDescription("The id of the task to update")

@@ -8,6 +8,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import ro.jf.ai.assistant.agent.AssistantModel
+import ro.jf.ai.assistant.agent.assistantStrategy
 import ro.jf.ai.assistant.agent.buildAgentInput
 import ro.jf.ai.assistant.conversation.ConversationMessage
 import ro.jf.ai.assistant.conversation.ConversationRole
@@ -32,7 +33,7 @@ fun Route.chatRoutes(
             } else {
                 val sessionId = conversationStore.resolveSessionId(request.sessionId)
                 val input = buildAgentInput(conversationStore.history(sessionId), request.message)
-                val reply = aiAgent(input, model = AssistantModel.GLM_5_2)
+                val reply = aiAgent(assistantStrategy(), AssistantModel.GLM_5_2, input)
                 conversationStore.append(
                     sessionId,
                     ConversationMessage(ConversationRole.USER, request.message),

@@ -22,6 +22,9 @@ val ASSISTANT_SYSTEM_PROMPT =
     "next Friday"; ask the user for the exact date instead of inventing one.
     The conversation has memory: earlier turns are provided to you, so you can resolve references
     like "it" or "that task" from context instead of asking the user to repeat ids.
+    When you decide to act, call the corresponding tool in the same response — never reply that you
+    are about to do something without doing it. Keep calling tools until the user's request is fully
+    carried out, then reply with the outcome.
     """.trimIndent()
 
 fun Application.installAssistant(

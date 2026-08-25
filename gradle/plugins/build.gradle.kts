@@ -12,4 +12,5 @@ ktlint {
 
 dependencies {
     implementation(libs.ktlint.gradle.plugin)
+    implementation(libs.kotlin.gradle.plugin)
 }

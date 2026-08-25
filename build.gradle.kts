@@ -9,3 +9,13 @@ plugins {
 tasks.named("check") {
     dependsOn(gradle.includedBuild("plugins").task(":check"))
 }
+
+tasks.register("buildImages") {
+    dependsOn(":service:jibDockerBuild", ":client:dockerBuildImage")
+}
+
+tasks.register("installLocal") {
+    dependsOn(tasks.named("build"))
+    dependsOn(subprojects.map { "${it.path}:build" })
+    dependsOn("buildImages")
+}

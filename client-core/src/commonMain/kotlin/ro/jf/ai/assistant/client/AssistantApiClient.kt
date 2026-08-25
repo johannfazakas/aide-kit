@@ -9,11 +9,9 @@ import ro.jf.ai.assistant.transfer.ChatRequest
 import ro.jf.ai.assistant.transfer.ChatResponse
 
 class AssistantApiClient(
-    httpClient: HttpClient,
+    private val client: HttpClient,
     private val baseUrl: String,
 ) {
-    private val client = httpClient.configuredForApi()
-
     suspend fun chat(request: ChatRequest): ChatResponse =
         client
             .post("$baseUrl/api/v1/chat") {

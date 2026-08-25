@@ -9,6 +9,7 @@ pluginManagement {
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
+        google()
     }
 }
 
@@ -18,3 +19,5 @@ includeBuild("gradle/plugins")
 
 include("service")
 include("shared")
+include("client-core")
+include("client")

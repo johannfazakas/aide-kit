@@ -13,8 +13,8 @@ class ApiException(
     message: String,
 ) : Exception(message)
 
-internal fun HttpClient.configuredForApi(): HttpClient =
-    config {
+fun apiHttpClient(): HttpClient =
+    HttpClient {
         install(ContentNegotiation) {
             json()
         }

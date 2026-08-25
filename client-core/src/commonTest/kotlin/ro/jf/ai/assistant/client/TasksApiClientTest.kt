@@ -1,14 +1,10 @@
 package ro.jf.ai.assistant.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.engine.mock.respond
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
-import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
@@ -17,10 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class TasksApiClientTest {
-    private fun tasksApiClient(handler: MockRequestHandler) =
-        TasksApiClient(HttpClient(MockEngine(handler)), "http://test")
-
-    private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, "application/json")
+    private fun tasksApiClient(handler: MockRequestHandler) = TasksApiClient(testApiHttpClient(handler), "http://test")
 
     @Test
     fun `given a create request when posted then the request matches the rest contract and the task deserializes`() =

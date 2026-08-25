@@ -1,0 +1,15 @@
+services:
+  service:
+    image: ${SERVICE_IMAGE:-aide-kit-service}
+    ports:
+      - "7080:7080"
+    environment:
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-}
+
+  web:
+    image: ${WEB_IMAGE:-aide-kit-web}
+    ports:
+      - "7081:80"
+    depends_on:
+      - service

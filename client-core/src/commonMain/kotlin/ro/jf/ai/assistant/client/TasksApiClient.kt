@@ -9,17 +9,14 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.TaskResponse
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
 
 class TasksApiClient(
-    httpClient: HttpClient,
+    private val client: HttpClient,
     private val baseUrl: String,
 ) {
-    private val client = httpClient.configuredForApi()
-
     suspend fun listTasks(category: String? = null): List<TaskResponse> =
         client
             .get("$baseUrl/api/v1/tasks") {
@@ -46,7 +43,6 @@ class TasksApiClient(
             }.bodyOrThrow()
 
     suspend fun deleteTask(id: String) {
-        val response = client.delete("$baseUrl/api/v1/tasks/$id")
-        if (!response.status.isSuccess()) throw response.toApiException()
+        client.delete("$baseUrl/api/v1/tasks/$id").bodyOrThrow<Unit>()
     }
 }

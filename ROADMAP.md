@@ -10,7 +10,13 @@ Store chat memory in postgres so it survives restarts
 
 A very simple UI client to display tasks and allow conversations
 
+### Improve UI usability
+
+Send message on enter, make Ctrl+F work somehow.
+
 ### Obsidian tasks integration
+
+### Make the agent understand relative dates like tomorrow
 
 ## Non-functional
 
@@ -19,3 +25,7 @@ A very simple UI client to display tasks and allow conversations
 Currently, many things are instantiated in the module, or set across the service logic.
 
 ### detekt
+
+### Make the api key not opencode specific
+
+

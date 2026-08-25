@@ -1,54 +1,60 @@
 # aide-kit
 
-A personal aid application: a backend where AI agents help manage aspects of daily life. The long-term vision includes a mobile client and more agent capabilities; the current slice is task management, available both as a REST API and through a conversational AI assistant.
+A personal aid application: a backend where AI agents help manage aspects of daily life, with a web client. The long-term vision includes a mobile client and more agent capabilities; the current slice is task management, available through a REST API, a conversational AI assistant, and a browser UI.
 
 ## Architecture
 
 ```
-                 ┌──────────────────── Ktor server ────────────────────┐
-                 │                                                     │
- REST client ───▶│  /api/v1/tasks ────────────▶ TaskService ──▶ TaskRepository
-                 │                                   ▲            (in-memory)
- chat client ───▶│  /api/v1/chat ──▶ Koog agent ── TaskTools           │
-                 │                       │                             │
-                 └───────────────────────│─────────────────────────────┘
-                                         ▼
+ browser ──▶ web (nginx, :7081)          Compose Multiplatform wasm app
+                │  fetch (CORS)
+                ▼
+ REST/chat ─▶ service (Ktor, :7080)
+                ├─ /api/v1/tasks ──▶ TaskService ──▶ TaskRepository (in-memory)
+                └─ /api/v1/chat ──▶ Koog agent ── TaskTools ──▶ TaskService
+                                        │
+                                        ▼
                           OpenCode Zen gateway (glm-5.2)
 ```
 
-- Gradle modules: `service/` (the Ktor application) and `shared/` (Kotlin Multiplatform: the API transfer models and per-area API clients (`TasksApiClient`, `AssistantApiClient`) for the upcoming web and Android clients; dates use `kotlinx-datetime`, serialized as ISO `yyyy-MM-dd`).
-- `routes` → `service` → `repository` layering; the agent's tools reuse the same `TaskService` as the REST API.
-- The assistant (package `agent`) is a [Koog](https://github.com/JetBrains/koog) agent wired through the `koog-ktor` plugin, running a custom strategy graph (`agent/AssistantStrategy.kt`) that keeps executing tool calls until a response contains none, so multi-step flows complete reliably. It holds per-session conversation memory (in-memory, bounded — see [Chat](#chat)) and can list, create, update, and complete tasks, but not delete them.
+- Gradle modules: `service/` (the Ktor application), `shared/` (the wire contract — transfer models, `kotlinx-datetime` dates as ISO `yyyy-MM-dd`), `client-core/` (client-side logic: per-area API clients and screen models, reusable by the future Android app), and `client/` (Compose Multiplatform web UI, wasmJs). The service depends only on `shared` — never on client modules. Shared build config lives in a `gradle/plugins` convention plugin.
+- The assistant (package `agent`) is a [Koog](https://github.com/JetBrains/koog) agent wired through the `koog-ktor` plugin, running a custom strategy graph (`agent/AssistantStrategy.kt`) that keeps executing tool calls until a response contains none, so multi-step flows complete reliably. It holds per-session conversation memory (in-memory, bounded — see [Chat](#chat)) and can list, create, update, and complete tasks, but not delete them (the web UI can, via REST).
 - Requirements and change history live in `openspec/` ([OpenSpec](https://github.com/Fission-AI/OpenSpec) workflow: specs under `openspec/specs/`, changes under `openspec/changes/`).
 
 ## Tech Stack
 
-- Kotlin (JDK 21), Ktor 3 (Netty, kotlinx.serialization), Gradle with version catalog
+- Kotlin Multiplatform (JDK 21), Ktor 3, kotlinx.serialization/datetime/coroutines, Gradle with version catalog
+- Compose Multiplatform (wasmJs) for the web client; nginx serves the bundle
 - Koog agent framework (`koog-ktor` plugin) with an OpenAI-compatible client against OpenCode Zen
+
+## Configuration
+
+The service **requires** `OPENCODE_API_KEY` (an [opencode.ai](https://opencode.ai) key) and fails fast at startup without it. Put it in a gitignored `.env` at the repo root — Docker Compose reads it natively:
+
+```shell
+OPENCODE_API_KEY=<your key>
+OPENCODE_BASE_URL=https://opencode.ai/zen/go    # Go subscription; omit for pay-per-token /zen
+```
+
+Optional: `PORT` (service port, default `7080`; must be an integer — startup fails on garbage) and `CORS_ALLOWED_ORIGINS` (comma-separated, normalized for trailing slashes and case; defaults to loopback origins — localhost, 127.0.0.1, [::1] — on any port; set explicitly for any non-localhost deployment).
 
 ## Run
 
 ```shell
 ./gradlew build         # build + lint + all tests (no LLM calls involved)
-./gradlew run           # start server on http://localhost:8080 (alias of :service:run)
-./gradlew ktlintCheck   # lint only
-./gradlew ktlintFormat  # auto-fix lint violations
+./gradlew installLocal  # build + both docker images (service via Jib, web via its nginx Dockerfile)
+docker compose up       # service on http://localhost:7080, web app on http://localhost:7081
 ```
 
-Code style is enforced by [ktlint](https://pinterest.github.io/ktlint/) (`ktlint_official`, configured in `.editorconfig`); `ktlintCheck` is part of `build`. CI (GitHub Actions) runs `./gradlew build` on pushes to `main` and pull requests.
-
-Assistant configuration (optional — without it the task API works and chat returns 503):
+Dev loops without Docker:
 
 ```shell
-export OPENCODE_API_KEY=<your key>                     # opencode.ai key
-export OPENCODE_BASE_URL=https://opencode.ai/zen/go    # Go subscription; omit for pay-per-token /zen
+set -a; source .env; set +a; ./gradlew run     # service only (alias of :service:run), on :7080
+./gradlew :client:wasmJsBrowserDevelopmentRun  # web app with hot reload, against the local service
 ```
 
-Alternatively put both in a gitignored `.env` file at the repo root and start the server with:
+`build` never touches Docker; `installLocal` (or `buildImages` for images only) needs a running Docker daemon.
 
-```shell
-set -a; source .env; set +a; ./gradlew run
-```
+Code style is enforced by [ktlint](https://pinterest.github.io/ktlint/) (`ktlint_official`, configured in `.editorconfig`); `ktlintCheck` is part of `build`, including the `gradle/plugins` included build. CI (GitHub Actions) runs `./gradlew build` on pushes to `main` and pull requests.
 
 ## API
 
@@ -61,15 +67,17 @@ set -a; source .env; set +a; ./gradlew run
 | DELETE | `/api/v1/tasks/{id}` | Delete a task                                     |
 | POST   | `/api/v1/chat`       | Talk to the assistant: `{"message", "sessionId"?}` → `{"sessionId", "reply"}` |
 
-Errors are JSON `{"message": "..."}`: `400` invalid input, `404` unknown id, `502` LLM gateway failure, `503` assistant not configured.
+Errors are JSON `{"message": "..."}`: `400` invalid input, `404` unknown id, `502` LLM gateway failure.
 
 [api.http](api.http) exercises every endpoint (JetBrains HTTP client format, runnable from IntelliJ).
 
+## Web client
+
+Open [http://localhost:7081](http://localhost:7081) for the web app: a task screen (list with filter, create/edit forms, completion toggles, delete with confirmation, refresh) and a chat screen. The task list re-fetches when you switch to it or press refresh — useful after the assistant changed tasks in chat.
+
 ## Chat
 
-Open [http://localhost:8080/](http://localhost:8080/) for a minimal chat page. Type a message and the assistant replies; the conversation has memory, so you can refer back ("mark it done") without repeating task ids.
-
-Memory is per session: the first message mints a `sessionId` (returned in the response and reused by the page for follow-ups); omitting it — or reloading the page — starts a fresh conversation. Send `sessionId` yourself when calling `/api/v1/chat` directly to continue a conversation; an unknown id (e.g. after a restart) is not adopted — the server mints and returns a fresh one.
+The assistant's conversation has memory, so you can refer back ("mark it done") without repeating task ids. Memory is per session: the first message mints a `sessionId` (returned in the response and reused by the client for follow-ups); omitting it — or reloading the page — starts a fresh conversation; an unknown id (e.g. after a restart) is not adopted — the server mints and returns a fresh one.
 
 **Conversation caveats**: history is in memory only (lost on restart) and bounded to the most recent turns, so a very long conversation forgets its earliest messages.
 

@@ -30,7 +30,7 @@ import kotlin.test.assertTrue
 class TaskApiIntegrationTest {
     private fun apiTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =
         testApplication {
-            application { module() }
+            application { module(openCodeApiKey = "test-key") }
             val client =
                 createClient {
                     install(ContentNegotiation) { json() }

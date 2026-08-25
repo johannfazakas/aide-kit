@@ -22,12 +22,13 @@ import ro.jf.ai.assistant.transfer.ErrorResponse
 import ro.jf.ai.assistant.transfer.TaskResponse
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ChatApiIntegrationTest {
     private fun chatApiTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =
         testApplication {
-            application { module(openCodeApiKey = null) }
+            application { module(openCodeApiKey = "test-key") }
             val client =
                 createClient {
                     install(ContentNegotiation) { json() }
@@ -36,16 +37,23 @@ class ChatApiIntegrationTest {
         }
 
     @Test
-    fun `given no api key when posting a chat message then responds 503 with error`() =
-        chatApiTest { client ->
-            val response =
-                client.post("/api/v1/chat") {
-                    contentType(ContentType.Application.Json)
-                    setBody(ChatRequest(message = "What tasks do I have?"))
-                }
+    fun `given no api key when starting then startup fails naming the variable`() =
+        testApplication {
+            application {
+                val failure = assertFailsWith<IllegalArgumentException> { module(openCodeApiKey = null) }
+                assertTrue(failure.message!!.contains("OPENCODE_API_KEY"))
+            }
+            startApplication()
+        }
 
-            assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
-            assertTrue(response.body<ErrorResponse>().message.contains("OPENCODE_API_KEY"))
+    @Test
+    fun `given a blank api key when starting then startup fails naming the variable`() =
+        testApplication {
+            application {
+                val failure = assertFailsWith<IllegalArgumentException> { module(openCodeApiKey = "   ") }
+                assertTrue(failure.message!!.contains("OPENCODE_API_KEY"))
+            }
+            startApplication()
         }
 
     @Test
@@ -74,24 +82,10 @@ class ChatApiIntegrationTest {
         }
 
     @Test
-    fun `given an api key when application starts then assistant installs and task api works`() =
-        testApplication {
-            application { module(openCodeApiKey = "test-key") }
-            val client =
-                createClient {
-                    install(ContentNegotiation) { json() }
-                }
-
-            val response = client.get("/api/v1/tasks")
-
-            assertEquals(HttpStatusCode.OK, response.status)
-        }
-
-    @Test
     fun `given an agent failure when handling a request then responds 502 with cause`() =
         testApplication {
             application {
-                module(openCodeApiKey = null)
+                module(openCodeApiKey = "test-key")
                 routing {
                     get("/test/agent-failure") {
                         throw AIAgentException("Error from client: OpenAILLMClient: Invalid API key")
@@ -110,7 +104,7 @@ class ChatApiIntegrationTest {
         }
 
     @Test
-    fun `given no api key when using the task api then behaves as without assistant`() =
+    fun `given a configured assistant when using the task api then it works alongside chat`() =
         chatApiTest { client ->
             val createResponse =
                 client.post("/api/v1/tasks") {

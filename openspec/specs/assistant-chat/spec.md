@@ -52,14 +52,14 @@ Each session's retained history SHALL be bounded to a recent window of turns, so
 - **THEN** only the most recent turns within the window are sent to the assistant on the next message
 
 ### Requirement: Chat web UI
-The application SHALL serve a minimal static chat page that lets a user hold a conversation with the assistant from a browser: an input for messages, a running display of the exchange, and calls to `POST /api/v1/chat`. The page SHALL carry the `sessionId` returned by the first exchange into subsequent requests so the conversation is continuous.
+A web chat interface SHALL be available (the Compose web client's chat screen, served by the web deployment) that lets a user hold a conversation with the assistant from a browser: an input for messages, a running display of the exchange, and calls to `POST /api/v1/chat`. The interface SHALL carry the `sessionId` returned by the first exchange into subsequent requests so the conversation is continuous.
 
 #### Scenario: Chatting from the page
-- **WHEN** the user opens the chat page, types a message, and submits it
+- **WHEN** the user opens the web client's chat screen, types a message, and submits it
 - **THEN** the message and the assistant's reply appear in the running display, and the next message continues the same session
 
 #### Scenario: New conversation
-- **WHEN** the user reloads the chat page
+- **WHEN** the user reloads the page
 - **THEN** a fresh conversation begins with no prior history
 
 ### Requirement: Task management through the assistant
@@ -117,13 +117,9 @@ When the agent run fails because of the LLM provider (rejected key, unavailable 
 - **WHEN** a chat message is posted and the LLM gateway rejects or fails the request
 - **THEN** the system responds `502 Bad Gateway` with an error body describing the cause
 
-### Requirement: Degraded mode without LLM configuration
-When the LLM provider API key (`OPENCODE_API_KEY`) is not configured, the application SHALL still start and serve the task REST API, and the chat endpoint SHALL respond `503 Service Unavailable` with an error body explaining the assistant is not configured.
+### Requirement: Startup requires LLM configuration
+The service SHALL refuse to start when the LLM provider API key (`OPENCODE_API_KEY`) is not configured, terminating with an error message that names the missing variable. No degraded or partial mode SHALL exist.
 
-#### Scenario: Chat without API key
-- **WHEN** the application runs without `OPENCODE_API_KEY` and a client posts a chat message
-- **THEN** the system responds `503 Service Unavailable` with an error body explaining the assistant is not configured
-
-#### Scenario: Task API unaffected by missing key
-- **WHEN** the application runs without `OPENCODE_API_KEY`
-- **THEN** all `/api/v1/tasks` endpoints behave exactly as specified in task-management
+#### Scenario: Missing key aborts startup
+- **WHEN** the service starts without `OPENCODE_API_KEY`
+- **THEN** it exits with an error naming the variable and serves no requests

@@ -1,43 +1,11 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ktlint)
-    application
+    base
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    id("aidekit.common-conventions")
 }
 
-group = "ro.jf.ai"
-version = "0.1.0"
-
-repositories {
-    mavenCentral()
-}
-
-kotlin {
-    jvmToolchain(21)
-}
-
-ktlint {
-    version.set(libs.versions.ktlint.asProvider())
-}
-
-application {
-    mainClass.set("ro.jf.ai.assistant.ApplicationKt")
-}
-
-dependencies {
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.netty)
-    implementation(libs.ktor.server.content.negotiation)
-    implementation(libs.ktor.server.status.pages)
-    implementation(libs.ktor.serialization.kotlinx.json)
-    implementation(libs.koog.ktor)
-    implementation(libs.logback.classic)
-
-    testImplementation(kotlin("test"))
-    testImplementation(libs.ktor.server.test.host)
-    testImplementation(libs.ktor.client.content.negotiation)
-}
-
-tasks.test {
-    useJUnitPlatform()
+tasks.named("check") {
+    dependsOn(gradle.includedBuild("plugins").task(":check"))
 }

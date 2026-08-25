@@ -17,3 +17,5 @@ A very simple UI client to display tasks and allow conversations
 ### Use dependency injection
 
 Currently, many things are instantiated in the module, or set across the service logic.
+
+### detekt

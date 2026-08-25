@@ -16,6 +16,7 @@ A personal aid application: a backend where AI agents help manage aspects of dai
                           OpenCode Zen gateway (glm-5.2)
 ```
 
+- Gradle modules: `service/` (the Ktor application) and `shared/` (Kotlin Multiplatform: the API transfer models and per-area API clients (`TasksApiClient`, `AssistantApiClient`) for the upcoming web and Android clients; dates use `kotlinx-datetime`, serialized as ISO `yyyy-MM-dd`).
 - `routes` → `service` → `repository` layering; the agent's tools reuse the same `TaskService` as the REST API.
 - The assistant (package `agent`) is a [Koog](https://github.com/JetBrains/koog) agent wired through the `koog-ktor` plugin, running a custom strategy graph (`agent/AssistantStrategy.kt`) that keeps executing tool calls until a response contains none, so multi-step flows complete reliably. It holds per-session conversation memory (in-memory, bounded — see [Chat](#chat)) and can list, create, update, and complete tasks, but not delete them.
 - Requirements and change history live in `openspec/` ([OpenSpec](https://github.com/Fission-AI/OpenSpec) workflow: specs under `openspec/specs/`, changes under `openspec/changes/`).
@@ -29,7 +30,7 @@ A personal aid application: a backend where AI agents help manage aspects of dai
 
 ```shell
 ./gradlew build         # build + lint + all tests (no LLM calls involved)
-./gradlew run           # start server on http://localhost:8080
+./gradlew run           # start server on http://localhost:8080 (alias of :service:run)
 ./gradlew ktlintCheck   # lint only
 ./gradlew ktlintFormat  # auto-fix lint violations
 ```

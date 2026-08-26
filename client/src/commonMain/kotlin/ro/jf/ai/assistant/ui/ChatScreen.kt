@@ -31,11 +31,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import ro.jf.ai.assistant.presentation.ChatRole
 import ro.jf.ai.assistant.presentation.ChatScreenModel
+import ro.jf.ai.assistant.presentation.MarkdownStyle
+import ro.jf.ai.assistant.presentation.RenderedMessage
 import ro.jf.ai.assistant.presentation.matchRanges
+import ro.jf.ai.assistant.presentation.rendered
 
 @Composable
 fun ChatScreen(
@@ -59,9 +66,10 @@ fun ChatScreen(
         ) {
             items(state.transcript) { message ->
                 val fromUser = message.role == ChatRole.USER
+                val rendered = remember(message) { message.rendered() }
                 Box(Modifier.fillMaxWidth()) {
                     Text(
-                        highlighted(message.content, highlightQuery),
+                        annotated(rendered, highlightQuery),
                         modifier =
                             Modifier
                                 .align(if (fromUser) Alignment.CenterEnd else Alignment.CenterStart)
@@ -103,15 +111,26 @@ fun ChatScreen(
 }
 
 @Composable
-private fun highlighted(
-    content: String,
+private fun annotated(
+    rendered: RenderedMessage,
     query: String,
 ): AnnotatedString {
-    val style = SpanStyle(background = MaterialTheme.colorScheme.tertiaryContainer)
+    val highlight = SpanStyle(background = MaterialTheme.colorScheme.tertiaryContainer)
     return buildAnnotatedString {
-        append(content)
-        matchRanges(content, query).forEach { range ->
-            addStyle(style, range.first, range.last + 1)
+        append(rendered.text)
+        rendered.spans.forEach { span ->
+            addStyle(span.style.toSpanStyle(), span.range.first, span.range.last + 1)
+        }
+        matchRanges(rendered.text, query).forEach { range ->
+            addStyle(highlight, range.first, range.last + 1)
         }
     }
 }
+
+private fun MarkdownStyle.toSpanStyle(): SpanStyle =
+    when (this) {
+        MarkdownStyle.BOLD -> SpanStyle(fontWeight = FontWeight.Bold)
+        MarkdownStyle.ITALIC -> SpanStyle(fontStyle = FontStyle.Italic)
+        MarkdownStyle.CODE -> SpanStyle(fontFamily = FontFamily.Monospace)
+        MarkdownStyle.HEADING -> SpanStyle(fontWeight = FontWeight.Bold, fontSize = 1.15.em)
+    }

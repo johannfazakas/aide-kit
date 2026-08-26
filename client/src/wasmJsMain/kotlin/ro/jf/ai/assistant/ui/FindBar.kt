@@ -29,6 +29,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import ro.jf.ai.assistant.presentation.ChatScreenModel
 import ro.jf.ai.assistant.presentation.findChatMatches
+import ro.jf.ai.assistant.presentation.rendered
 import ro.jf.ai.assistant.presentation.wrappedNext
 import ro.jf.ai.assistant.presentation.wrappedPrevious
 
@@ -42,7 +43,8 @@ internal fun FindBar(
     fieldFocus: FocusRequester,
 ) {
     val state by chatModel.state.collectAsState()
-    val matches = remember(query, state.transcript) { findChatMatches(state.transcript.map { it.content }, query) }
+    val matches =
+        remember(query, state.transcript) { findChatMatches(state.transcript.map { it.rendered().text }, query) }
     var current by remember { mutableStateOf(0) }
 
     LaunchedEffect(matches) {

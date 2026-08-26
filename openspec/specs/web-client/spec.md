@@ -30,7 +30,7 @@ The web client SHALL provide a task screen that lists the user's tasks and suppo
 - **THEN** the list reflects the current server state
 
 ### Requirement: Chat screen
-The web client SHALL provide a chat screen with a message input and a running transcript of the conversation. It SHALL carry the `sessionId` returned by the first exchange into subsequent requests, keep it only in memory (a page reload starts a fresh conversation), and display the assistant's replies as they arrive. Failures (including an unreachable service) SHALL surface as a visible error state rather than silently dropping messages.
+The web client SHALL provide a chat screen with a message input and a running transcript of the conversation. It SHALL carry the `sessionId` returned by the first exchange into subsequent requests, keep it only in memory (a page reload starts a fresh conversation), and display the assistant's replies as they arrive. Failures (including an unreachable service) SHALL surface as a visible error state rather than silently dropping messages. Assistant messages SHALL render common markdown notation — bold, italic, inline code, bullet lists, and headings — as styled text with the markers stripped; unsupported or malformed notation SHALL fall back to literal text. User messages SHALL render exactly as typed.
 
 #### Scenario: Continuous conversation
 - **WHEN** the user sends several messages in a row
@@ -43,6 +43,14 @@ The web client SHALL provide a chat screen with a message input and a running tr
 #### Scenario: Failure surfaced
 - **WHEN** a chat message fails (service unreachable or an error response)
 - **THEN** the chat screen shows a visible error and the transcript keeps the user's message context
+
+#### Scenario: Assistant markdown rendered
+- **WHEN** the assistant replies with text containing `**bold**` words and `- ` bullet lines
+- **THEN** the transcript shows the words bolded and the lines bulleted, with no literal `**` or `- ` markers visible
+
+#### Scenario: Malformed markdown degrades to text
+- **WHEN** an assistant reply contains an unclosed marker such as a lone `**`
+- **THEN** the affected text renders literally and the rest of the message still renders styled
 
 ### Requirement: Split serving with CORS
 The web client bundle SHALL be served by a dedicated web server, separate from the API service, which SHALL NOT serve any static content. The service SHALL grant CORS to configured origins: allowed origins come from an environment variable (values normalized for trailing slashes and case), defaulting to loopback origins — localhost, 127.0.0.1, [::1] — on any scheme and port when unset; origins outside the configured set SHALL NOT be granted CORS headers.
@@ -82,7 +90,7 @@ On hardware keyboards, the chat input SHALL send the message on Enter under the 
 - **THEN** focus moves to the next (or previous) field and the browser chrome does not take focus
 
 ### Requirement: In-app find
-The web client SHALL open an in-app find bar on Ctrl+F, and the browser's native find bar SHALL NOT appear. On the chat screen the bar SHALL search the transcript case-insensitively, show the match count, highlight matches, cycle to the next/previous match on Enter/Shift+Enter (scrolling the transcript to the match), and close on Escape. On the tasks screen Ctrl+F SHALL focus the existing filter field instead. The find affordance is web-only.
+The web client SHALL open an in-app find bar on Ctrl+F, and the browser's native find bar SHALL NOT appear. On the chat screen the bar SHALL search the rendered transcript text (markdown markers stripped) case-insensitively, show the match count, highlight matches, cycle to the next/previous match on Enter/Shift+Enter (scrolling the transcript to the match), and close on Escape. On the tasks screen Ctrl+F SHALL focus the existing filter field instead. The find affordance is web-only.
 
 #### Scenario: Native find suppressed
 - **WHEN** the user presses Ctrl+F anywhere in the web client
@@ -99,3 +107,7 @@ The web client SHALL open an in-app find bar on Ctrl+F, and the browser's native
 #### Scenario: Escape closes find
 - **WHEN** the user presses Escape while the find bar is open
 - **THEN** the bar closes and the transcript highlights are removed
+
+#### Scenario: Find matches rendered text
+- **WHEN** the assistant's reply shows a bolded word and the user searches that word
+- **THEN** the word matches and is highlighted in place, and searching for the literal marker characters (`**`) yields no match

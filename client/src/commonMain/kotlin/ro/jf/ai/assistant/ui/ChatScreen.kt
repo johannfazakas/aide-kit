@@ -70,20 +70,28 @@ fun ChatScreen(
                     val fromUser = message.role == ChatRole.USER
                     val rendered = remember(message) { message.rendered() }
                     Box(Modifier.fillMaxWidth()) {
-                        Text(
-                            annotated(rendered, highlightQuery),
+                        Box(
                             modifier =
                                 Modifier
-                                    .align(if (fromUser) Alignment.CenterEnd else Alignment.CenterStart)
-                                    .background(
-                                        if (fromUser) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                        },
-                                        RoundedCornerShape(12.dp),
-                                    ).padding(horizontal = 12.dp, vertical = 8.dp),
-                        )
+                                    .fillMaxWidth(0.85f)
+                                    .align(if (fromUser) Alignment.CenterEnd else Alignment.CenterStart),
+                            contentAlignment = if (fromUser) Alignment.CenterEnd else Alignment.CenterStart,
+                        ) {
+                            Text(
+                                annotated(rendered, highlightQuery),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier =
+                                    Modifier
+                                        .background(
+                                            if (fromUser) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceVariant
+                                            },
+                                            RoundedCornerShape(16.dp),
+                                        ).padding(horizontal = 14.dp, vertical = 10.dp),
+                            )
+                        }
                     }
                 }
             }

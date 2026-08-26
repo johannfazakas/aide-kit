@@ -58,21 +58,30 @@ fun TasksScreen(
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         CreateTaskForm(onCreate = { title, due, category -> model.create(title, due, category) })
         HorizontalDivider()
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        LazyColumn {
             items(state.visibleTasks, key = { it.id }) { task ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked = task.completed, onCheckedChange = { model.toggleCompleted(task) })
-                    Column(Modifier.weight(1f)) {
-                        Text(task.title, style = MaterialTheme.typography.bodyLarge)
-                        val details = listOfNotNull(task.dueDate?.toString(), task.category).joinToString(" · ")
-                        if (details.isNotEmpty()) Text(details, style = MaterialTheme.typography.bodySmall)
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = task.completed, onCheckedChange = { model.toggleCompleted(task) })
+                        Column(Modifier.weight(1f)) {
+                            Text(task.title, style = MaterialTheme.typography.titleMedium)
+                            val details = listOfNotNull(task.dueDate?.toString(), task.category).joinToString(" · ")
+                            if (details.isNotEmpty()) {
+                                Text(
+                                    details,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        TextButton(onClick = { editing = task }) { Text("Edit") }
+                        TextButton(onClick = { model.requestDelete(task) }) { Text("Delete") }
                     }
-                    TextButton(onClick = { editing = task }) { Text("Edit") }
-                    TextButton(onClick = { model.requestDelete(task) }) { Text("Delete") }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
         }
@@ -114,33 +123,36 @@ private fun CreateTaskForm(onCreate: (String, LocalDate?, String?) -> Unit) {
         }
     }
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
             label = { Text("New task") },
-            modifier = Modifier.weight(2f).submitOnEnter(submit),
+            modifier = Modifier.fillMaxWidth().submitOnEnter(submit),
             singleLine = true,
         )
-        OutlinedTextField(
-            value = due,
-            onValueChange = { due = it },
-            label = { Text("Due (yyyy-mm-dd)") },
-            modifier = Modifier.weight(1f).submitOnEnter(submit),
-            singleLine = true,
-            isError = !due.isValidDateInput(),
-        )
-        OutlinedTextField(
-            value = category,
-            onValueChange = { category = it },
-            label = { Text("Category") },
-            modifier = Modifier.weight(1f).submitOnEnter(submit),
-            singleLine = true,
-        )
-        Button(
-            onClick = submit,
-            enabled = title.isNotBlank() && due.isValidDateInput(),
-        ) { Text("Add") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = due,
+                onValueChange = { due = it },
+                label = { Text("Due") },
+                placeholder = { Text("yyyy-mm-dd") },
+                modifier = Modifier.weight(1f).submitOnEnter(submit),
+                singleLine = true,
+                isError = !due.isValidDateInput(),
+            )
+            OutlinedTextField(
+                value = category,
+                onValueChange = { category = it },
+                label = { Text("Category") },
+                modifier = Modifier.weight(1f).submitOnEnter(submit),
+                singleLine = true,
+            )
+            Button(
+                onClick = submit,
+                enabled = title.isNotBlank() && due.isValidDateInput(),
+            ) { Text("Add") }
+        }
     }
 }
 
@@ -173,7 +185,8 @@ private fun EditTaskDialog(
                 OutlinedTextField(
                     value = due,
                     onValueChange = { due = it },
-                    label = { Text("Due (yyyy-mm-dd)") },
+                    label = { Text("Due") },
+                    placeholder = { Text("yyyy-mm-dd") },
                     modifier = Modifier.submitOnEnter(submit),
                     isError = !due.isValidDateInput(),
                 )

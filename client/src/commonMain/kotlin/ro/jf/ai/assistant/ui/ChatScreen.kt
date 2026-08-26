@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -59,29 +60,31 @@ fun ChatScreen(
     }
 
     Column(modifier.padding(16.dp).imePadding(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(state.transcript) { message ->
-                val fromUser = message.role == ChatRole.USER
-                val rendered = remember(message) { message.rendered() }
-                Box(Modifier.fillMaxWidth()) {
-                    Text(
-                        annotated(rendered, highlightQuery),
-                        modifier =
-                            Modifier
-                                .align(if (fromUser) Alignment.CenterEnd else Alignment.CenterStart)
-                                .background(
-                                    if (fromUser) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                    RoundedCornerShape(12.dp),
-                                ).padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
+        SelectionContainer(Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(state.transcript) { message ->
+                    val fromUser = message.role == ChatRole.USER
+                    val rendered = remember(message) { message.rendered() }
+                    Box(Modifier.fillMaxWidth()) {
+                        Text(
+                            annotated(rendered, highlightQuery),
+                            modifier =
+                                Modifier
+                                    .align(if (fromUser) Alignment.CenterEnd else Alignment.CenterStart)
+                                    .background(
+                                        if (fromUser) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        },
+                                        RoundedCornerShape(12.dp),
+                                    ).padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
+                    }
                 }
             }
         }

@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import ro.jf.ai.assistant.presentation.TasksScreenModel
@@ -37,6 +39,7 @@ private fun String.isValidDateInput(): Boolean = isBlank() || toLocalDateOrNull(
 fun TasksScreen(
     model: TasksScreenModel,
     modifier: Modifier = Modifier,
+    filterFocus: FocusRequester = remember { FocusRequester() },
 ) {
     val state by model.state.collectAsState()
     var editing by remember(model) { mutableStateOf<TaskResponse?>(null) }
@@ -47,7 +50,7 @@ fun TasksScreen(
                 value = state.filter,
                 onValueChange = model::setFilter,
                 label = { Text("Filter") },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(filterFocus),
                 singleLine = true,
             )
             Button(onClick = model::refresh) { Text("Refresh") }
@@ -102,20 +105,28 @@ private fun CreateTaskForm(onCreate: (String, LocalDate?, String?) -> Unit) {
     var title by remember { mutableStateOf("") }
     var due by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
+    val submit = {
+        if (title.isNotBlank() && due.isValidDateInput()) {
+            onCreate(title.trim(), due.toLocalDateOrNull(), category.trim().ifBlank { null })
+            title = ""
+            due = ""
+            category = ""
+        }
+    }
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
             label = { Text("New task") },
-            modifier = Modifier.weight(2f),
+            modifier = Modifier.weight(2f).submitOnEnter(submit),
             singleLine = true,
         )
         OutlinedTextField(
             value = due,
             onValueChange = { due = it },
             label = { Text("Due (yyyy-mm-dd)") },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).submitOnEnter(submit),
             singleLine = true,
             isError = !due.isValidDateInput(),
         )
@@ -123,16 +134,11 @@ private fun CreateTaskForm(onCreate: (String, LocalDate?, String?) -> Unit) {
             value = category,
             onValueChange = { category = it },
             label = { Text("Category") },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).submitOnEnter(submit),
             singleLine = true,
         )
         Button(
-            onClick = {
-                onCreate(title.trim(), due.toLocalDateOrNull(), category.trim().ifBlank { null })
-                title = ""
-                due = ""
-                category = ""
-            },
+            onClick = submit,
             enabled = title.isNotBlank() && due.isValidDateInput(),
         ) { Text("Add") }
     }
@@ -147,25 +153,41 @@ private fun EditTaskDialog(
     var title by remember { mutableStateOf(task.title) }
     var due by remember { mutableStateOf(task.dueDate?.toString() ?: "") }
     var category by remember { mutableStateOf(task.category ?: "") }
+    val submit = {
+        if (title.isNotBlank() && due.isValidDateInput()) {
+            onSave(title.trim(), due.toLocalDateOrNull(), category.trim().ifBlank { null })
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit task") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier.submitOnEnter(submit),
+                )
                 OutlinedTextField(
                     value = due,
                     onValueChange = { due = it },
                     label = { Text("Due (yyyy-mm-dd)") },
+                    modifier = Modifier.submitOnEnter(submit),
                     isError = !due.isValidDateInput(),
                 )
-                OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category") })
+                OutlinedTextField(
+                    value = category,
+                    onValueChange = { category = it },
+                    label = { Text("Category") },
+                    modifier = Modifier.submitOnEnter(submit),
+                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(title.trim(), due.toLocalDateOrNull(), category.trim().ifBlank { null }) },
+                onClick = submit,
                 enabled = title.isNotBlank() && due.isValidDateInput(),
             ) { Text("Save") }
         },

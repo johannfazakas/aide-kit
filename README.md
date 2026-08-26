@@ -76,6 +76,8 @@ Errors are JSON `{"message": "..."}`: `400` invalid input, `404` unknown id, `50
 
 Open [http://localhost:7081](http://localhost:7081) for the web app: a task screen (list with filter, create/edit forms, completion toggles, delete with confirmation, refresh) and a chat screen. The task list re-fetches when you switch to it or press refresh — useful after the assistant changed tasks in chat.
 
+Keyboard shortcuts: **Enter** sends the chat message (**Shift+Enter** inserts a newline) and submits the task forms; **Tab / Shift+Tab** moves between form fields; **Ctrl/Cmd+F** opens an in-app find over the chat transcript (match count, Enter/Shift+Enter cycles, Esc closes) — the app renders to a canvas, so the browser's native find can't see its text; on the task screen it focuses the filter field instead.
+
 ## Android app
 
 The same screens ship as an Android app (debug builds installed over adb — no store, no signing setup). State survives rotation, and the server address is a persisted in-app setting ("Server" in the top bar), defaulting to `http://10.0.2.2:7080` — the emulator's alias for the host machine — so the emulator works with zero configuration against a locally running service. Plain HTTP is deliberately allowed (LAN dev tool).

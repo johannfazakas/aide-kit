@@ -1,21 +1,6 @@
-# Spec: shared-client
+# shared-client
 
-## Purpose
-
-Provide the Kotlin Multiplatform client-side foundation in two modules: a contract module (`shared`) holding the API transfer models — common-code models serialized with kotlinx.serialization that keep the REST wire format stable — and a client module (`client-core`) with Ktor-based tasks and assistant clients usable from any platform with a caller-supplied engine.
-
-## Requirements
-
-### Requirement: Shared API models
-The API transfer models SHALL live in a Kotlin Multiplatform shared module as common code, usable from the server and from client platforms, serialized with kotlinx.serialization. Date fields SHALL use `kotlinx-datetime` `LocalDate` and serialize to ISO `yyyy-MM-dd`, keeping the REST wire format identical to the pre-restructure contract.
-
-#### Scenario: Wire format unchanged
-- **WHEN** a task with a due date is serialized through the shared models
-- **THEN** the JSON is identical to the previous server-only serialization, with the due date as `"yyyy-MM-dd"`
-
-#### Scenario: Round-trip integrity
-- **WHEN** any transfer model is serialized to JSON and deserialized back
-- **THEN** the result equals the original, including null and populated optional fields
+## MODIFIED Requirements
 
 ### Requirement: Multiplatform API clients
 The client-side shared module (`client-core`) SHALL provide API clients built on the multiplatform Ktor client with a caller-supplied engine, separated by functional area: a tasks client exposing create/list/get/update/delete, and an assistant client exposing chat (with optional session id). They SHALL use the shared transfer models and surface the server's error responses to callers. The contract module (`shared`) SHALL contain only the transfer models, and the service SHALL depend only on the contract module — never on client-side modules. Both modules SHALL compile for the web (wasmJs), JVM, and Android targets.

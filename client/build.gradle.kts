@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
+    id("com.android.application")
     id("aidekit.common-conventions")
 }
 
@@ -31,6 +32,8 @@ tasks.register<Exec>("dockerBuildImage") {
 }
 
 kotlin {
+    jvmToolchain(21)
+    androidTarget()
     wasmJs {
         browser()
         binaries.executable()
@@ -46,5 +49,37 @@ kotlin {
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
         }
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.lifecycle.viewmodel)
+            implementation(libs.ktor.client.okhttp)
+        }
+    }
+}
+
+android {
+    namespace = "ro.jf.ai.assistant.client"
+    compileSdk =
+        libs.versions.android.compile.sdk
+            .get()
+            .toInt()
+    defaultConfig {
+        applicationId = "ro.jf.ai.assistant"
+        minSdk =
+            libs.versions.android.min.sdk
+                .get()
+                .toInt()
+        targetSdk =
+            libs.versions.android.compile.sdk
+                .get()
+                .toInt()
+        versionCode = 1
+        versionName = "0.1.0"
+    }
+}
+
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) {
+        it.enable = false
     }
 }

@@ -10,13 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import ro.jf.ai.assistant.client.AssistantApiClient
-import ro.jf.ai.assistant.client.TasksApiClient
-import ro.jf.ai.assistant.client.apiHttpClient
 import ro.jf.ai.assistant.presentation.ChatScreenModel
 import ro.jf.ai.assistant.presentation.TasksScreenModel
 
@@ -29,19 +25,20 @@ private enum class Destination(
 }
 
 @Composable
-fun App(baseUrl: String) {
-    val scope = rememberCoroutineScope()
-    val httpClient = remember { apiHttpClient() }
-    val tasksModel = remember { TasksScreenModel(TasksApiClient(httpClient, baseUrl), scope) }
-    val chatModel = remember { ChatScreenModel(AssistantApiClient(httpClient, baseUrl), scope) }
-    var destination by remember { mutableStateOf(Destination.TASKS) }
+fun App(
+    tasksModel: TasksScreenModel,
+    chatModel: ChatScreenModel,
+    topBar: @Composable () -> Unit = {},
+) {
+    var destination by rememberSaveable { mutableStateOf(Destination.TASKS) }
 
-    LaunchedEffect(destination) {
+    LaunchedEffect(destination, tasksModel) {
         if (destination == Destination.TASKS) tasksModel.refresh()
     }
 
     MaterialTheme {
         Scaffold(
+            topBar = topBar,
             bottomBar = {
                 NavigationBar {
                     Destination.entries.forEach { entry ->

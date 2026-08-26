@@ -3,6 +3,10 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
 ktlint {
     version.set(libs.versions.ktlint.asProvider())
     filter {
@@ -13,4 +17,5 @@ ktlint {
 dependencies {
     implementation(libs.ktlint.gradle.plugin)
     implementation(libs.kotlin.gradle.plugin)
+    implementation(libs.android.gradle.plugin)
 }

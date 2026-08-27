@@ -96,12 +96,31 @@ The assistant SHALL complete multi-step tool flows within a single chat request:
 - **WHEN** the user's message needs no tool action, or the tools' results already answer it
 - **THEN** the assistant replies in plain text and the run ends normally, without being forced into further tool calls
 
-### Requirement: Clarification on ambiguous instructions
-The assistant's system prompt SHALL instruct it to ask a clarifying question in its reply, rather than guess, when the user's instruction is ambiguous or cannot be fulfilled with the available tools — including relative dates, which the assistant cannot resolve without current-date awareness.
+### Requirement: Current-date awareness
+The assistant SHALL have a tool that returns the current date (server-local) in ISO-8601 format (`yyyy-MM-dd`) together with the day of week. The assistant's system prompt SHALL instruct it to resolve relative date expressions (such as "tomorrow", "in three days", or "next Friday") by invoking this tool and computing the concrete date, rather than asking the user, and SHALL forbid assuming a date without the tool. Expressions that remain ambiguous even with the current date known (such as "sometime next week") SHALL still be clarified with the user.
 
-#### Scenario: Relative due date
-- **WHEN** the user asks for a task due "tomorrow" or another relative date
-- **THEN** the reply asks for the concrete date instead of inventing one
+#### Scenario: Relative due date resolved
+- **WHEN** the user asks for a task due "tomorrow"
+- **THEN** the assistant invokes the current-date tool and creates the task with the concrete date one day after the returned date, without asking the user for a date
+
+#### Scenario: Weekday-relative date resolved
+- **WHEN** the user asks for a task due "next Friday"
+- **THEN** the assistant resolves the target date from the tool's returned date and day of week and creates the task with a concrete `yyyy-MM-dd` due date
+
+#### Scenario: Still-ambiguous date expression
+- **WHEN** the user gives a date expression that the current date does not disambiguate, such as "sometime next week"
+- **THEN** the reply asks a clarifying question instead of picking a date
+
+#### Scenario: Deterministic tool output
+- **WHEN** the current-date tool is invoked against a fixed clock in a test
+- **THEN** it returns exactly the ISO-8601 date and day of week corresponding to that clock's instant in the system time zone
+
+### Requirement: Clarification on ambiguous instructions
+The assistant's system prompt SHALL instruct it to ask a clarifying question in its reply, rather than guess, when the user's instruction is ambiguous or cannot be fulfilled with the available tools.
+
+#### Scenario: Ambiguous instruction
+- **WHEN** the user's instruction is ambiguous or outside what the available tools can do
+- **THEN** the reply asks a clarifying question instead of guessing
 
 ### Requirement: Tool error recovery
 Tool invocations that fail due to domain errors (unknown task id, invalid input) SHALL return the error description to the assistant as a tool result, allowing it to react (e.g., re-list tasks or ask the user), rather than aborting the chat request.

@@ -20,4 +20,4 @@ Personal aid application: Ktor backend where AI agents help with daily life, sta
 
 ## Planned directions
 
-A current-date tool (agent currently asks instead of resolving "tomorrow"), agent-side deletion, persistent storage (tasks and conversations).
+Agent-side deletion, persistent storage (tasks and conversations). `ROADMAP.md` tracks the owner's backlog — keep it in sync: remove an item there once it is implemented.

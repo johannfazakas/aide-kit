@@ -18,8 +18,10 @@ val ASSISTANT_SYSTEM_PROMPT =
     category filter and match by title; never guess a category the user did not name.
     When an instruction is ambiguous or cannot be fulfilled with your tools, ask a clarifying
     question in your reply instead of guessing.
-    You do not know the current date, so you cannot resolve relative dates like "tomorrow" or
-    "next Friday"; ask the user for the exact date instead of inventing one.
+    To resolve relative dates like "tomorrow" or "next Friday", call the current-date tool and
+    compute the target date from the returned date and day of week; never assume today's date
+    without the tool. If a date expression stays ambiguous even knowing the current date (such as
+    "sometime next week"), ask the user to pin it down.
     The conversation has memory: earlier turns are provided to you, so you can resolve references
     like "it" or "that task" from context instead of asking the user to repeat ids.
     When you decide to act, call the corresponding tool in the same response — never reply that you
@@ -44,6 +46,7 @@ fun Application.installAssistant(
             }
             registerTools {
                 tools(TaskTools(taskService).asTools())
+                tools(DateTools().asTools())
             }
         }
     }

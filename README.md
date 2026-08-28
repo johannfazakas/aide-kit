@@ -26,6 +26,7 @@ A personal aid application: a backend where AI agents help manage aspects of dai
 - Kotlin Multiplatform (JDK 21), Ktor 3, kotlinx.serialization/datetime/coroutines, Gradle with version catalog
 - Compose Multiplatform for the clients — wasmJs for the web (nginx serves the bundle) and the Android app from the same screens
 - Koog agent framework (`koog-ktor` plugin) with an OpenAI-compatible client against OpenCode Zen
+- Koin (`koin-ktor`) for service dependency injection, wired at the composition root
 
 ## Configuration
 

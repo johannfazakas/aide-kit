@@ -5,7 +5,7 @@ Content-Type: application/json
 {
   "title": "Pay rent",
   "dueDate": "2026-07-31",
-  "category": "home"
+  "topic": "home"
 }
 
 > {% client.global.set("taskId", response.body.id); %}
@@ -18,24 +18,27 @@ Content-Type: application/json
   "title": "Read a book"
 }
 
+### List the known topics
+GET http://localhost:7080/api/v1/topics
+
 ### List all tasks
 GET http://localhost:7080/api/v1/tasks
 
-### List tasks filtered by category
-GET http://localhost:7080/api/v1/tasks?category=home
+### List tasks filtered by topic
+GET http://localhost:7080/api/v1/tasks?topic=home
 
 ### Get a task by id
 GET http://localhost:7080/api/v1/tasks/{{taskId}}
 
-### Update a task (full replace) and mark it completed
+### Update a task (full replace) and mark it done
 PUT http://localhost:7080/api/v1/tasks/{{taskId}}
 Content-Type: application/json
 
 {
   "title": "Pay rent",
   "dueDate": "2026-07-31",
-  "category": "home",
-  "completed": true
+  "topic": "home",
+  "done": true
 }
 
 ### Delete a task
@@ -57,7 +60,7 @@ POST http://localhost:7080/api/v1/chat
 Content-Type: application/json
 
 {
-  "message": "Add a task to buy groceries in the home category, due on 2026-08-10."
+  "message": "Add a task to buy groceries under the home topic, due on 2026-08-10."
 }
 
 ### Chat: list tasks via the assistant
@@ -65,7 +68,7 @@ POST http://localhost:7080/api/v1/chat
 Content-Type: application/json
 
 {
-  "message": "What tasks do I have in the home category?"
+  "message": "What tasks do I have under the home topic?"
 }
 
 ### Chat: complete a task via the assistant

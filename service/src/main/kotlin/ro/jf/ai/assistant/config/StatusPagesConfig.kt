@@ -9,12 +9,20 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import ro.jf.ai.assistant.exception.TaskNotFoundException
+import ro.jf.ai.assistant.exception.UnsupportedTaskOperationException
+import ro.jf.ai.assistant.exception.VaultConflictException
 import ro.jf.ai.assistant.transfer.ErrorResponse
 
 fun Application.configureStatusPages() {
     install(StatusPages) {
         exception<TaskNotFoundException> { call, cause ->
             call.respond(HttpStatusCode.NotFound, ErrorResponse(cause.message ?: "Task not found"))
+        }
+        exception<UnsupportedTaskOperationException> { call, cause ->
+            call.respond(HttpStatusCode.NotImplemented, ErrorResponse(cause.message ?: "Operation not supported"))
+        }
+        exception<VaultConflictException> { call, cause ->
+            call.respond(HttpStatusCode.Conflict, ErrorResponse(cause.message ?: "Vault has conflicting edits"))
         }
         exception<IllegalArgumentException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: "Invalid request"))

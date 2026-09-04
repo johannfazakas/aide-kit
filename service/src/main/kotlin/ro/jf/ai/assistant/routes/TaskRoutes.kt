@@ -21,8 +21,8 @@ fun Route.taskRoutes(service: TaskService) {
             call.respond(HttpStatusCode.Created, task.toResponse())
         }
         get {
-            val category = call.request.queryParameters["category"]
-            call.respond(service.list(category).map { it.toResponse() })
+            val topic = call.request.queryParameters["topic"]
+            call.respond(service.list(topic).map { it.toResponse() })
         }
         get("{id}") {
             call.respond(service.get(call.parameters["id"]!!).toResponse())
@@ -35,5 +35,8 @@ fun Route.taskRoutes(service: TaskService) {
             service.delete(call.parameters["id"]!!)
             call.respond(HttpStatusCode.NoContent)
         }
+    }
+    get("/api/v1/topics") {
+        call.respond(service.listTopics())
     }
 }

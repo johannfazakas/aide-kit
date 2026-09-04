@@ -15,30 +15,30 @@ class TransferModelsSerializationTest {
                 id = "t1",
                 title = "Pay rent",
                 dueDate = LocalDate.parse("2026-08-24"),
-                category = "home",
-                completed = false,
+                topic = "home",
+                done = false,
             )
 
         val encoded = json.encodeToString(TaskResponse.serializer(), response)
 
         assertEquals(
-            """{"id":"t1","title":"Pay rent","dueDate":"2026-08-24","category":"home","completed":false}""",
+            """{"id":"t1","title":"Pay rent","dueDate":"2026-08-24","topic":"home","done":false}""",
             encoded,
         )
     }
 
     @Test
     fun `given a task response without optional fields when serialized then nulls are encoded explicitly`() {
-        val response = TaskResponse(id = "t1", title = "Pay rent", completed = true)
+        val response = TaskResponse(id = "t1", title = "Pay rent", done = true)
 
         val encoded = json.encodeToString(TaskResponse.serializer(), response)
 
-        assertEquals("""{"id":"t1","title":"Pay rent","dueDate":null,"category":null,"completed":true}""", encoded)
+        assertEquals("""{"id":"t1","title":"Pay rent","dueDate":null,"topic":null,"done":true}""", encoded)
     }
 
     @Test
     fun `given a create request with due date when round-tripped then values are preserved`() {
-        val request = CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-01"), category = "health")
+        val request = CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-01"), topic = "health")
 
         val decoded =
             json.decodeFromString(
@@ -51,7 +51,7 @@ class TransferModelsSerializationTest {
 
     @Test
     fun `given an update request without optional fields when round-tripped then defaults are preserved`() {
-        val request = UpdateTaskRequest(title = "Dentist", completed = true)
+        val request = UpdateTaskRequest(title = "Dentist", done = true)
 
         val decoded =
             json.decodeFromString(

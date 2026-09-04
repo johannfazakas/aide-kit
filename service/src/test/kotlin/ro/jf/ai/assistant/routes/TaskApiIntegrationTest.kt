@@ -16,7 +16,9 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.datetime.LocalDate
+import ro.jf.ai.assistant.config.StartupConfig
 import ro.jf.ai.assistant.module
+import ro.jf.ai.assistant.repository.DEFAULT_TOPICS
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.ErrorResponse
 import ro.jf.ai.assistant.transfer.TaskResponse
@@ -30,7 +32,7 @@ import kotlin.test.assertTrue
 class TaskApiIntegrationTest {
     private fun apiTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =
         testApplication {
-            application { module(openCodeApiKey = "test-key") }
+            application { module(StartupConfig(openCodeApiKey = "test-key")) }
             val client =
                 createClient {
                     install(ContentNegotiation) { json() }
@@ -57,7 +59,7 @@ class TaskApiIntegrationTest {
                         CreateTaskRequest(
                             title = "Pay rent",
                             dueDate = LocalDate.parse("2026-07-31"),
-                            category = "home",
+                            topic = "home",
                         ),
                     )
                 }
@@ -66,32 +68,32 @@ class TaskApiIntegrationTest {
             assertTrue(created.id.isNotBlank())
             assertEquals("Pay rent", created.title)
             assertEquals(LocalDate.parse("2026-07-31"), created.dueDate)
-            assertEquals("home", created.category)
-            assertFalse(created.completed)
+            assertEquals("home", created.topic)
+            assertFalse(created.done)
 
             val fetched = client.get("/api/v1/tasks/${created.id}").body<TaskResponse>()
             assertEquals(created, fetched)
 
             client.post("/api/v1/tasks") {
                 contentType(ContentType.Application.Json)
-                setBody(CreateTaskRequest(title = "Report", category = "work"))
+                setBody(CreateTaskRequest(title = "Report", topic = "work"))
             }
             val all = client.get("/api/v1/tasks").body<List<TaskResponse>>()
             assertEquals(2, all.size)
-            val filtered = client.get("/api/v1/tasks?category=home").body<List<TaskResponse>>()
+            val filtered = client.get("/api/v1/tasks?topic=home").body<List<TaskResponse>>()
             assertEquals(listOf(created), filtered)
 
             val updateResponse =
                 client.put("/api/v1/tasks/${created.id}") {
                     contentType(ContentType.Application.Json)
-                    setBody(UpdateTaskRequest(title = "Pay rent", completed = true))
+                    setBody(UpdateTaskRequest(title = "Pay rent", done = true))
                 }
             assertEquals(HttpStatusCode.OK, updateResponse.status)
             val updated = updateResponse.body<TaskResponse>()
             assertEquals(created.id, updated.id)
-            assertTrue(updated.completed)
+            assertTrue(updated.done)
             assertNull(updated.dueDate)
-            assertNull(updated.category)
+            assertNull(updated.topic)
 
             val deleteResponse = client.delete("/api/v1/tasks/${created.id}")
             assertEquals(HttpStatusCode.NoContent, deleteResponse.status)
@@ -105,6 +107,55 @@ class TaskApiIntegrationTest {
                 client.post("/api/v1/tasks") {
                     contentType(ContentType.Application.Json)
                     setBody(CreateTaskRequest(title = "  "))
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.body<ErrorResponse>().message.isNotBlank())
+        }
+
+    @Test
+    fun `given a started application when listing topics then responds 200 with the seeded topics`() =
+        apiTest { client ->
+            val response = client.get("/api/v1/topics")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(DEFAULT_TOPICS, response.body<List<String>>())
+        }
+
+    @Test
+    fun `given an unknown topic when creating then responds 400 with message and creates nothing`() =
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/tasks") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateTaskRequest(title = "Task", topic = "nonsense"))
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.body<ErrorResponse>().message.isNotBlank())
+            assertEquals(emptyList(), client.get("/api/v1/tasks").body<List<TaskResponse>>())
+        }
+
+    @Test
+    fun `given a former category field when creating then responds 400 with message`() =
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/tasks") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"title": "Task", "category": "home"}""")
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.body<ErrorResponse>().message.isNotBlank())
+        }
+
+    @Test
+    fun `given a former completed field when creating then responds 400 with message`() =
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/tasks") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"title": "Task", "completed": true}""")
                 }
 
             assertEquals(HttpStatusCode.BadRequest, response.status)

@@ -4,8 +4,15 @@ services:
     ports:
       - "7080:7080"
     environment:
+      APP_PROFILE: ${APP_PROFILE:-live}
       OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
       OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-}
+      OBSIDIAN_REPO_URL: ${OBSIDIAN_REPO_URL:-}
+      OBSIDIAN_REPO_TOKEN: ${OBSIDIAN_REPO_TOKEN:-}
+      OBSIDIAN_REPO_BRANCH: ${OBSIDIAN_REPO_BRANCH:-}
+      OBSIDIAN_CLONE_DIR: ${OBSIDIAN_CLONE_DIR:-/data/vault-clone}
+    volumes:
+      - vault-clone:/data
 
   web:
     image: ${WEB_IMAGE:-aide-kit-web}
@@ -13,3 +20,6 @@ services:
       - "7081:80"
     depends_on:
       - service
+
+volumes:
+  vault-clone:

@@ -24,8 +24,8 @@ class TaskServiceTest {
         assertEquals("id-0", task.id)
         assertEquals("Pay rent", task.title)
         assertNull(task.dueDate)
-        assertNull(task.category)
-        assertFalse(task.completed)
+        assertNull(task.topic)
+        assertFalse(task.done)
         assertEquals(task, repository.findById(task.id))
     }
 
@@ -33,16 +33,30 @@ class TaskServiceTest {
     fun `given all fields when create then task is stored with given values`() {
         val task =
             service.create(
-                CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), category = "health"),
+                CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), topic = "health"),
             )
 
         assertEquals(LocalDate.parse("2026-08-10"), task.dueDate)
-        assertEquals("health", task.category)
+        assertEquals("health", task.topic)
     }
 
     @Test
     fun `given a blank title when create then throws IllegalArgumentException`() {
         assertFailsWith<IllegalArgumentException> { service.create(CreateTaskRequest(title = "   ")) }
+    }
+
+    @Test
+    fun `given an unknown topic when create then throws IllegalArgumentException`() {
+        assertFailsWith<IllegalArgumentException> {
+            service.create(CreateTaskRequest(title = "Task", topic = "nonsense"))
+        }
+    }
+
+    @Test
+    fun `given seeded topics when listTopics then returns the repository topics`() {
+        val seededService = TaskService(InMemoryTaskRepository(topics = listOf("alpha", "beta")))
+
+        assertEquals(listOf("alpha", "beta"), seededService.listTopics())
     }
 
     @Test
@@ -54,11 +68,11 @@ class TaskServiceTest {
     }
 
     @Test
-    fun `given tasks in categories when list by category then returns only matching`() {
-        val work = service.create(CreateTaskRequest(title = "Report", category = "work"))
-        service.create(CreateTaskRequest(title = "Dishes", category = "home"))
+    fun `given tasks in topics when list by topic then returns only matching`() {
+        val work = service.create(CreateTaskRequest(title = "Report", topic = "work"))
+        service.create(CreateTaskRequest(title = "Dishes", topic = "home"))
 
-        assertEquals(listOf(work), service.list(category = "work"))
+        assertEquals(listOf(work), service.list(topic = "work"))
     }
 
     @Test
@@ -77,16 +91,16 @@ class TaskServiceTest {
     fun `given an existing task when update then replaces all fields and preserves id`() {
         val task =
             service.create(
-                CreateTaskRequest(title = "Old", dueDate = LocalDate.parse("2026-07-31"), category = "home"),
+                CreateTaskRequest(title = "Old", dueDate = LocalDate.parse("2026-07-31"), topic = "home"),
             )
 
-        val updated = service.update(task.id, UpdateTaskRequest(title = "New", completed = true))
+        val updated = service.update(task.id, UpdateTaskRequest(title = "New", done = true))
 
         assertEquals(task.id, updated.id)
         assertEquals("New", updated.title)
         assertNull(updated.dueDate)
-        assertNull(updated.category)
-        assertTrue(updated.completed)
+        assertNull(updated.topic)
+        assertTrue(updated.done)
     }
 
     @Test

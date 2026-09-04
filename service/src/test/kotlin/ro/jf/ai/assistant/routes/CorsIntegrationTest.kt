@@ -5,6 +5,7 @@ import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
+import ro.jf.ai.assistant.config.StartupConfig
 import ro.jf.ai.assistant.module
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,7 +15,7 @@ class CorsIntegrationTest {
     @Test
     fun `given no cors configuration when a localhost origin calls then cors is granted`() =
         testApplication {
-            application { module(openCodeApiKey = "test-key", corsAllowedOrigins = null) }
+            application { module(StartupConfig(openCodeApiKey = "test-key", corsAllowedOrigins = null)) }
 
             val response =
                 client.get("/api/v1/tasks") {
@@ -28,7 +29,7 @@ class CorsIntegrationTest {
     @Test
     fun `given no cors configuration when a loopback ip origin calls then cors is granted`() =
         testApplication {
-            application { module(openCodeApiKey = "test-key", corsAllowedOrigins = null) }
+            application { module(StartupConfig(openCodeApiKey = "test-key", corsAllowedOrigins = null)) }
 
             val response =
                 client.get("/api/v1/tasks") {
@@ -42,7 +43,9 @@ class CorsIntegrationTest {
     @Test
     fun `given a configured origin with trailing slash when the browser origin calls then cors is granted`() =
         testApplication {
-            application { module(openCodeApiKey = "test-key", corsAllowedOrigins = "https://App.example.com/") }
+            application {
+                module(StartupConfig(openCodeApiKey = "test-key", corsAllowedOrigins = "https://App.example.com/"))
+            }
 
             val response =
                 client.get("/api/v1/tasks") {
@@ -56,7 +59,9 @@ class CorsIntegrationTest {
     @Test
     fun `given configured origins when a listed origin calls then cors is granted`() =
         testApplication {
-            application { module(openCodeApiKey = "test-key", corsAllowedOrigins = "http://app.example.com") }
+            application {
+                module(StartupConfig(openCodeApiKey = "test-key", corsAllowedOrigins = "http://app.example.com"))
+            }
 
             val response =
                 client.get("/api/v1/tasks") {
@@ -70,7 +75,9 @@ class CorsIntegrationTest {
     @Test
     fun `given configured origins when a foreign origin calls then cors is refused`() =
         testApplication {
-            application { module(openCodeApiKey = "test-key", corsAllowedOrigins = "http://app.example.com") }
+            application {
+                module(StartupConfig(openCodeApiKey = "test-key", corsAllowedOrigins = "http://app.example.com"))
+            }
 
             val response =
                 client.get("/api/v1/tasks") {
@@ -83,7 +90,7 @@ class CorsIntegrationTest {
     @Test
     fun `given no cors configuration when a non-localhost origin calls then cors is refused`() =
         testApplication {
-            application { module(openCodeApiKey = "test-key", corsAllowedOrigins = null) }
+            application { module(StartupConfig(openCodeApiKey = "test-key", corsAllowedOrigins = null)) }
 
             val response =
                 client.get("/api/v1/tasks") {

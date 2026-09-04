@@ -7,6 +7,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import ro.jf.ai.assistant.exception.TaskNotFoundException
+import ro.jf.ai.assistant.exception.UnsupportedTaskOperationException
+import ro.jf.ai.assistant.exception.VaultConflictException
 import ro.jf.ai.assistant.service.TaskService
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
@@ -20,19 +22,26 @@ class TaskTools(
 
     @Tool
     @LLMDescription(
-        "List the user's tasks, optionally filtered by category. Returns a JSON array of tasks. " +
-            "To find a task described by its content, list without a category filter and match by title.",
+        "List the user's tasks, optionally filtered by topic. Returns a JSON array of tasks. " +
+            "To find a task described by its content, list without a topic filter and match by title.",
     )
     fun listTasks(
         @LLMDescription(
-            "Category to filter by; omit to list all tasks. Only pass a category the user explicitly named — " +
-                "it is a user-defined label such as 'home' or 'work', never guessed from task content",
+            "Topic to filter by; omit to list all tasks. Only pass a topic the user explicitly named — " +
+                "it is one of the known topics (see listTopics), never guessed from task content",
         )
-        category: String? = null,
+        topic: String? = null,
     ): String =
         guarded {
-            json.encodeToString(service.list(category).map { it.toResponse() })
+            json.encodeToString(service.list(topic).map { it.toResponse() })
         }
+
+    @Tool
+    @LLMDescription(
+        "List the known topics a task may be filed under. Returns a JSON array of topic name strings. " +
+            "Consult this before filing a task under a topic; a task's topic must be one of these or absent.",
+    )
+    fun listTopics(): String = guarded { json.encodeToString(service.listTopics()) }
 
     @Tool
     @LLMDescription("Get a single task by its id. Returns the task as JSON.")
@@ -51,17 +60,21 @@ class TaskTools(
         title: String,
         @LLMDescription("Due date in ISO-8601 format (yyyy-MM-dd); omit if the task has no due date")
         dueDate: String? = null,
-        @LLMDescription("Category of the task; omit if uncategorized")
-        category: String? = null,
+        @LLMDescription(
+            "Topic to file the task under; must be one of the known topics (see listTopics). Omit to leave " +
+                "the task without a topic. Never invent a topic — if the user names one that is not known, " +
+                "consult listTopics and clarify with the user instead of guessing",
+        )
+        topic: String? = null,
     ): String =
         guarded {
-            val task = service.create(CreateTaskRequest(title, dueDate.toLocalDate(), category))
+            val task = service.create(CreateTaskRequest(title, dueDate.toLocalDate(), topic))
             json.encodeToString(task.toResponse())
         }
 
     @Tool
     @LLMDescription(
-        "Update a task by id, replacing all its fields — including marking it completed. " +
+        "Update a task by id, replacing all its fields — including marking it done. " +
             "Fields left out are cleared, so pass along the values that must be kept. Fetch the task first " +
             "only when you do not already know its current values from the conversation or an earlier " +
             "tool result. Returns the updated task as JSON.",
@@ -73,13 +86,15 @@ class TaskTools(
         title: String,
         @LLMDescription("Due date in ISO-8601 format (yyyy-MM-dd); omit to clear it")
         dueDate: String? = null,
-        @LLMDescription("Category of the task; omit to clear it")
-        category: String? = null,
-        @LLMDescription("Whether the task is completed")
-        completed: Boolean = false,
+        @LLMDescription(
+            "Topic to file the task under; must be one of the known topics (see listTopics); omit to clear it",
+        )
+        topic: String? = null,
+        @LLMDescription("Whether the task is done")
+        done: Boolean = false,
     ): String =
         guarded {
-            val task = service.update(id, UpdateTaskRequest(title, dueDate.toLocalDate(), category, completed))
+            val task = service.update(id, UpdateTaskRequest(title, dueDate.toLocalDate(), topic, done))
             json.encodeToString(task.toResponse())
         }
 
@@ -97,6 +112,10 @@ class TaskTools(
             block()
         } catch (e: TaskNotFoundException) {
             error(e.message ?: "Task not found")
+        } catch (e: UnsupportedTaskOperationException) {
+            error(e.message ?: "Operation not supported")
+        } catch (e: VaultConflictException) {
+            error(e.message ?: "Vault has conflicting edits")
         } catch (e: IllegalArgumentException) {
             error(e.message ?: "Invalid input")
         }

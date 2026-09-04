@@ -15,6 +15,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import ro.jf.ai.assistant.config.StartupConfig
 import ro.jf.ai.assistant.module
 import ro.jf.ai.assistant.transfer.ChatRequest
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
@@ -28,7 +29,7 @@ import kotlin.test.assertTrue
 class ChatApiIntegrationTest {
     private fun chatApiTest(block: suspend ApplicationTestBuilder.(HttpClient) -> Unit) =
         testApplication {
-            application { module(openCodeApiKey = "test-key") }
+            application { module(StartupConfig(openCodeApiKey = "test-key")) }
             val client =
                 createClient {
                     install(ContentNegotiation) { json() }
@@ -40,7 +41,7 @@ class ChatApiIntegrationTest {
     fun `given no api key when starting then startup fails naming the variable`() =
         testApplication {
             application {
-                val failure = assertFailsWith<IllegalArgumentException> { module(openCodeApiKey = null) }
+                val failure = assertFailsWith<IllegalArgumentException> { module(StartupConfig(openCodeApiKey = null)) }
                 assertTrue(failure.message!!.contains("OPENCODE_API_KEY"))
             }
             startApplication()
@@ -50,7 +51,8 @@ class ChatApiIntegrationTest {
     fun `given a blank api key when starting then startup fails naming the variable`() =
         testApplication {
             application {
-                val failure = assertFailsWith<IllegalArgumentException> { module(openCodeApiKey = "   ") }
+                val failure =
+                    assertFailsWith<IllegalArgumentException> { module(StartupConfig(openCodeApiKey = "   ")) }
                 assertTrue(failure.message!!.contains("OPENCODE_API_KEY"))
             }
             startApplication()
@@ -85,7 +87,7 @@ class ChatApiIntegrationTest {
     fun `given an agent failure when handling a request then responds 502 with cause`() =
         testApplication {
             application {
-                module(openCodeApiKey = "test-key")
+                module(StartupConfig(openCodeApiKey = "test-key"))
                 routing {
                     get("/test/agent-failure") {
                         throw AIAgentException("Error from client: OpenAILLMClient: Invalid API key")

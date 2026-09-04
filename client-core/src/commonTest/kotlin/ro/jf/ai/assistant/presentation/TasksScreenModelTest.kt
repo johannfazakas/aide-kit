@@ -31,8 +31,8 @@ class TasksScreenModelTest {
     private fun taskJson(
         id: String,
         title: String,
-        completed: Boolean = false,
-    ) = """{"id":"$id","title":"$title","dueDate":null,"category":null,"completed":$completed}"""
+        done: Boolean = false,
+    ) = """{"id":"$id","title":"$title","dueDate":null,"topic":null,"done":$done}"""
 
     @Test
     fun `given tasks on the server when refreshing then the state holds them`() =
@@ -91,20 +91,38 @@ class TasksScreenModelTest {
                     if (request.method == HttpMethod.Put) requests.add((request.body as TextContent).text)
                     when (request.method) {
                         HttpMethod.Get -> respond("[${taskJson("t1", "Pay rent")}]", HttpStatusCode.OK, jsonHeaders())
-                        else -> respond(taskJson("t1", "Pay rent", completed = true), HttpStatusCode.OK, jsonHeaders())
+                        else -> respond(taskJson("t1", "Pay rent", done = true), HttpStatusCode.OK, jsonHeaders())
                     }
                 }
             model.refresh()
             val loaded = model.state.first { it.tasks.isNotEmpty() }
 
-            model.toggleCompleted(loaded.tasks.first())
-            val updated = model.state.first { it.tasks.firstOrNull()?.completed == true }
+            model.toggleDone(loaded.tasks.first())
+            val updated = model.state.first { it.tasks.firstOrNull()?.done == true }
 
             assertEquals(
-                listOf("""{"title":"Pay rent","dueDate":null,"category":null,"completed":true}"""),
+                listOf("""{"title":"Pay rent","dueDate":null,"topic":null,"done":true}"""),
                 requests,
             )
-            assertTrue(updated.tasks.first().completed)
+            assertTrue(updated.tasks.first().done)
+        }
+
+    @Test
+    fun `given a topics endpoint when refreshing then the topics are loaded into state`() =
+        runTest {
+            val model =
+                modelOn { request ->
+                    if (request.url.encodedPath == "/api/v1/topics") {
+                        respond("""["home","work"]""", HttpStatusCode.OK, jsonHeaders())
+                    } else {
+                        respond("[]", HttpStatusCode.OK, jsonHeaders())
+                    }
+                }
+
+            model.refresh()
+            val state = model.state.first { it.topics.isNotEmpty() }
+
+            assertEquals(listOf("home", "work"), state.topics)
         }
 
     @Test

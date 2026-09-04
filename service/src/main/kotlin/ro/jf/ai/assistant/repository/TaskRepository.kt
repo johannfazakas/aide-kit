@@ -7,11 +7,11 @@ interface TaskRepository {
     fun create(
         title: String,
         dueDate: LocalDate?,
-        category: String?,
-        completed: Boolean,
+        topic: String?,
+        done: Boolean,
     ): Task
 
-    fun findAll(category: String? = null): List<Task>
+    fun findAll(topic: String? = null): List<Task>
 
     fun findById(id: String): Task?
 
@@ -19,9 +19,11 @@ interface TaskRepository {
         id: String,
         title: String,
         dueDate: LocalDate?,
-        category: String?,
-        completed: Boolean,
+        topic: String?,
+        done: Boolean,
     ): Task?
 
     fun delete(id: String): Boolean
+
+    fun listTopics(): List<String>
 }

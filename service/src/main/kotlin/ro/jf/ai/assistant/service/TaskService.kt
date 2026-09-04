@@ -11,10 +11,13 @@ class TaskService(
 ) {
     fun create(request: CreateTaskRequest): Task {
         require(request.title.isNotBlank()) { "Title must not be blank" }
-        return repository.create(request.title, request.dueDate, request.category, request.completed)
+        validateTopic(request.topic)
+        return repository.create(request.title, request.dueDate, request.topic, request.done)
     }
 
-    fun list(category: String? = null): List<Task> = repository.findAll(category)
+    fun list(topic: String? = null): List<Task> = repository.findAll(topic)
+
+    fun listTopics(): List<String> = repository.listTopics()
 
     fun get(id: String): Task = repository.findById(id) ?: throw TaskNotFoundException(id)
 
@@ -23,11 +26,22 @@ class TaskService(
         request: UpdateTaskRequest,
     ): Task {
         require(request.title.isNotBlank()) { "Title must not be blank" }
-        return repository.update(id, request.title, request.dueDate, request.category, request.completed)
+        validateTopic(request.topic)
+        return repository.update(id, request.title, request.dueDate, request.topic, request.done)
             ?: throw TaskNotFoundException(id)
     }
 
     fun delete(id: String) {
         if (!repository.delete(id)) throw TaskNotFoundException(id)
+    }
+
+    private fun validateTopic(topic: String?) {
+        if (topic == null) return
+        val topics = repository.listTopics()
+        if (topic !in topics) {
+            throw IllegalArgumentException(
+                "Unknown topic '$topic'; choose one of $topics or omit the topic",
+            )
+        }
     }
 }

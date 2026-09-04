@@ -23,11 +23,11 @@ class TasksApiClientTest {
                     assertEquals(HttpMethod.Post, request.method)
                     assertEquals("http://test/api/v1/tasks", request.url.toString())
                     assertEquals(
-                        """{"title":"Dentist","dueDate":"2026-09-01","category":"health","completed":false}""",
+                        """{"title":"Dentist","dueDate":"2026-09-01","topic":"health","done":false}""",
                         (request.body as TextContent).text,
                     )
                     respond(
-                        """{"id":"t1","title":"Dentist","dueDate":"2026-09-01","category":"health","completed":false}""",
+                        """{"id":"t1","title":"Dentist","dueDate":"2026-09-01","topic":"health","done":false}""",
                         HttpStatusCode.Created,
                         jsonHeaders(),
                     )
@@ -35,7 +35,7 @@ class TasksApiClientTest {
 
             val task =
                 client.createTask(
-                    CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-01"), category = "health"),
+                    CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-01"), topic = "health"),
                 )
 
             assertEquals("t1", task.id)
@@ -43,15 +43,27 @@ class TasksApiClientTest {
         }
 
     @Test
-    fun `given a category filter when listing tasks then the query parameter is sent`() =
+    fun `given a topic filter when listing tasks then the query parameter is sent`() =
         runTest {
             val client =
                 tasksApiClient { request ->
-                    assertEquals("http://test/api/v1/tasks?category=home", request.url.toString())
+                    assertEquals("http://test/api/v1/tasks?topic=home", request.url.toString())
                     respond("[]", HttpStatusCode.OK, jsonHeaders())
                 }
 
-            assertEquals(emptyList(), client.listTasks(category = "home"))
+            assertEquals(emptyList(), client.listTasks(topic = "home"))
+        }
+
+    @Test
+    fun `given a topics response when listing topics then the names are returned`() =
+        runTest {
+            val client =
+                tasksApiClient { request ->
+                    assertEquals("http://test/api/v1/topics", request.url.toString())
+                    respond("""["home","work"]""", HttpStatusCode.OK, jsonHeaders())
+                }
+
+            assertEquals(listOf("home", "work"), client.listTopics())
         }
 
     @Test

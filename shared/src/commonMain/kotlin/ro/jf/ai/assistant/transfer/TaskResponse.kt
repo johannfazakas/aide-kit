@@ -8,6 +8,6 @@ data class TaskResponse(
     val id: String,
     val title: String,
     val dueDate: LocalDate? = null,
-    val category: String? = null,
-    val completed: Boolean,
+    val topic: String? = null,
+    val done: Boolean,
 )

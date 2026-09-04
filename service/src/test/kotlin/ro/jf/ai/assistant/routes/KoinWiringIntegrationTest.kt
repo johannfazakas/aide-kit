@@ -11,6 +11,7 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
 import org.koin.dsl.module
+import ro.jf.ai.assistant.config.StartupConfig
 import ro.jf.ai.assistant.config.serviceModule
 import ro.jf.ai.assistant.module
 import ro.jf.ai.assistant.repository.InMemoryTaskRepository
@@ -26,11 +27,11 @@ class KoinWiringIntegrationTest {
         testApplication {
             val seeded =
                 InMemoryTaskRepository().apply {
-                    create(title = "Seeded task", dueDate = null, category = "seed", completed = false)
+                    create(title = "Seeded task", dueDate = null, topic = "home", done = false)
                 }
             val overrides = module { single<TaskRepository> { seeded } }
             application {
-                module(openCodeApiKey = "test-key", koinModules = listOf(serviceModule, overrides))
+                module(StartupConfig(openCodeApiKey = "test-key"), koinModules = listOf(serviceModule(), overrides))
             }
             val client = createClient { install(ContentNegotiation) { json() } }
 
@@ -38,13 +39,13 @@ class KoinWiringIntegrationTest {
 
             assertEquals(1, tasks.size)
             assertEquals("Seeded task", tasks.first().title)
-            assertEquals("seed", tasks.first().category)
+            assertEquals("home", tasks.first().topic)
         }
 
     @Test
     fun `given default modules when creating a task then subsequent reads observe the same singleton store`() =
         testApplication {
-            application { module(openCodeApiKey = "test-key") }
+            application { module(StartupConfig(openCodeApiKey = "test-key")) }
             val client = createClient { install(ContentNegotiation) { json() } }
 
             val created =

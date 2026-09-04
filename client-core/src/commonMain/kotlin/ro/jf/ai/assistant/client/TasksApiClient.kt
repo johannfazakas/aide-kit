@@ -17,11 +17,13 @@ class TasksApiClient(
     private val client: HttpClient,
     private val baseUrl: String,
 ) {
-    suspend fun listTasks(category: String? = null): List<TaskResponse> =
+    suspend fun listTasks(topic: String? = null): List<TaskResponse> =
         client
             .get("$baseUrl/api/v1/tasks") {
-                if (category != null) parameter("category", category)
+                if (topic != null) parameter("topic", topic)
             }.bodyOrThrow()
+
+    suspend fun listTopics(): List<String> = client.get("$baseUrl/api/v1/topics").bodyOrThrow()
 
     suspend fun getTask(id: String): TaskResponse = client.get("$baseUrl/api/v1/tasks/$id").bodyOrThrow()
 

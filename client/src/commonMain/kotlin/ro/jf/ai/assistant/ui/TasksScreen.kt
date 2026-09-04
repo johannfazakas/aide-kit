@@ -1,6 +1,7 @@
 package ro.jf.ai.assistant.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,8 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,7 +60,10 @@ fun TasksScreen(
             Button(onClick = model::refresh) { Text("Refresh") }
         }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        CreateTaskForm(onCreate = { title, due, category -> model.create(title, due, category) })
+        CreateTaskForm(
+            topics = state.topics,
+            onCreate = { title, due, topic -> model.create(title, due, topic) },
+        )
         HorizontalDivider()
         LazyColumn {
             items(state.visibleTasks, key = { it.id }) { task ->
@@ -66,10 +73,10 @@ fun TasksScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Checkbox(checked = task.completed, onCheckedChange = { model.toggleCompleted(task) })
+                        Checkbox(checked = task.done, onCheckedChange = { model.toggleDone(task) })
                         Column(Modifier.weight(1f)) {
                             Text(task.title, style = MaterialTheme.typography.titleMedium)
-                            val details = listOfNotNull(task.dueDate?.toString(), task.category).joinToString(" · ")
+                            val details = listOfNotNull(task.dueDate?.toString(), task.topic).joinToString(" · ")
                             if (details.isNotEmpty()) {
                                 Text(
                                     details,
@@ -100,8 +107,9 @@ fun TasksScreen(
     editing?.let { task ->
         EditTaskDialog(
             task = task,
-            onSave = { title, due, category ->
-                model.update(task, title = title, dueDate = due, category = category)
+            topics = state.topics,
+            onSave = { title, due, topic ->
+                model.update(task, title = title, dueDate = due, topic = topic)
                 editing = null
             },
             onDismiss = { editing = null },
@@ -110,16 +118,52 @@ fun TasksScreen(
 }
 
 @Composable
-private fun CreateTaskForm(onCreate: (String, LocalDate?, String?) -> Unit) {
+private fun TopicSelector(
+    topics: List<String>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier) {
+        OutlinedButton(onClick = { expanded = true }) {
+            Text(selected ?: "No topic")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("No topic") },
+                onClick = {
+                    onSelect(null)
+                    expanded = false
+                },
+            )
+            topics.forEach { topic ->
+                DropdownMenuItem(
+                    text = { Text(topic) },
+                    onClick = {
+                        onSelect(topic)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateTaskForm(
+    topics: List<String>,
+    onCreate: (String, LocalDate?, String?) -> Unit,
+) {
     var title by remember { mutableStateOf("") }
     var due by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
+    var topic by remember { mutableStateOf<String?>(null) }
     val submit = {
         if (title.isNotBlank() && due.isValidDateInput()) {
-            onCreate(title.trim(), due.toLocalDateOrNull(), category.trim().ifBlank { null })
+            onCreate(title.trim(), due.toLocalDateOrNull(), topic)
             title = ""
             due = ""
-            category = ""
+            topic = null
         }
     }
 
@@ -141,13 +185,7 @@ private fun CreateTaskForm(onCreate: (String, LocalDate?, String?) -> Unit) {
                 singleLine = true,
                 isError = !due.isValidDateInput(),
             )
-            OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
-                label = { Text("Category") },
-                modifier = Modifier.weight(1f).submitOnEnter(submit),
-                singleLine = true,
-            )
+            TopicSelector(topics = topics, selected = topic, onSelect = { topic = it })
             Button(
                 onClick = submit,
                 enabled = title.isNotBlank() && due.isValidDateInput(),
@@ -159,15 +197,16 @@ private fun CreateTaskForm(onCreate: (String, LocalDate?, String?) -> Unit) {
 @Composable
 private fun EditTaskDialog(
     task: TaskResponse,
+    topics: List<String>,
     onSave: (String, LocalDate?, String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var title by remember { mutableStateOf(task.title) }
     var due by remember { mutableStateOf(task.dueDate?.toString() ?: "") }
-    var category by remember { mutableStateOf(task.category ?: "") }
+    var topic by remember { mutableStateOf(task.topic) }
     val submit = {
         if (title.isNotBlank() && due.isValidDateInput()) {
-            onSave(title.trim(), due.toLocalDateOrNull(), category.trim().ifBlank { null })
+            onSave(title.trim(), due.toLocalDateOrNull(), topic)
         }
     }
 
@@ -190,12 +229,7 @@ private fun EditTaskDialog(
                     modifier = Modifier.submitOnEnter(submit),
                     isError = !due.isValidDateInput(),
                 )
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Category") },
-                    modifier = Modifier.submitOnEnter(submit),
-                )
+                TopicSelector(topics = topics, selected = topic, onSelect = { topic = it })
             }
         },
         confirmButton = {

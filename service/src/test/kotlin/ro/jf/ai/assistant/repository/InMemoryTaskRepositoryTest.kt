@@ -18,8 +18,8 @@ class InMemoryTaskRepositoryTest {
         assertEquals("id-0", task.id)
         assertEquals("Pay rent", task.title)
         assertEquals(LocalDate.parse("2026-07-31"), task.dueDate)
-        assertEquals("home", task.category)
-        assertFalse(task.completed)
+        assertEquals("home", task.topic)
+        assertFalse(task.done)
         assertEquals(task, repository.findById("id-0"))
     }
 
@@ -39,12 +39,19 @@ class InMemoryTaskRepositoryTest {
     }
 
     @Test
-    fun `given tasks in different categories when findAll by category then returns only exact matches`() {
+    fun `given tasks in different topics when findAll by topic then returns only exact matches`() {
         val work = repository.create("Report", null, "work", false)
         repository.create("Dishes", null, "home", false)
-        repository.create("Uncategorized", null, null, false)
+        repository.create("Untopiced", null, null, false)
 
-        assertEquals(listOf(work), repository.findAll(category = "work"))
+        assertEquals(listOf(work), repository.findAll(topic = "work"))
+    }
+
+    @Test
+    fun `given seeded topics when listTopics then returns them`() {
+        val seeded = InMemoryTaskRepository(topics = listOf("alpha", "beta"))
+
+        assertEquals(listOf("alpha", "beta"), seeded.listTopics())
     }
 
     @Test
@@ -61,8 +68,8 @@ class InMemoryTaskRepositoryTest {
         assertEquals(task.id, updated?.id)
         assertEquals("New title", updated?.title)
         assertNull(updated?.dueDate)
-        assertNull(updated?.category)
-        assertTrue(updated?.completed == true)
+        assertNull(updated?.topic)
+        assertTrue(updated?.done == true)
         assertEquals(updated, repository.findById(task.id))
     }
 

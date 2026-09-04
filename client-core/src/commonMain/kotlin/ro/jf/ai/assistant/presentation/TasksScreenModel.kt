@@ -14,6 +14,7 @@ import ro.jf.ai.assistant.transfer.UpdateTaskRequest
 
 data class TasksState(
     val tasks: List<TaskResponse> = emptyList(),
+    val topics: List<String> = emptyList(),
     val filter: String = "",
     val loading: Boolean = false,
     val error: String? = null,
@@ -53,6 +54,14 @@ class TasksScreenModel(
                     }
                 }.onFailure { failWith(it) }
         }
+        loadTopics()
+    }
+
+    private fun loadTopics() {
+        scope.launch {
+            runCatching { client.listTopics() }
+                .onSuccess { topics -> mutableState.update { it.copy(topics = topics) } }
+        }
     }
 
     fun setFilter(text: String) {
@@ -62,11 +71,11 @@ class TasksScreenModel(
     fun create(
         title: String,
         dueDate: LocalDate? = null,
-        category: String? = null,
+        topic: String? = null,
     ) {
         mutableState.update { it.copy(error = null) }
         scope.launch {
-            runCatching { client.createTask(CreateTaskRequest(title = title, dueDate = dueDate, category = category)) }
+            runCatching { client.createTask(CreateTaskRequest(title = title, dueDate = dueDate, topic = topic)) }
                 .onSuccess { created ->
                     mutationCount++
                     mutableState.update { it.copy(tasks = it.tasks + created) }
@@ -78,8 +87,8 @@ class TasksScreenModel(
         task: TaskResponse,
         title: String = task.title,
         dueDate: LocalDate? = task.dueDate,
-        category: String? = task.category,
-        completed: Boolean = task.completed,
+        topic: String? = task.topic,
+        done: Boolean = task.done,
     ) {
         if (!updatingTaskIds.add(task.id)) return
         mutableState.update { it.copy(error = null) }
@@ -87,7 +96,7 @@ class TasksScreenModel(
             runCatching {
                 client.updateTask(
                     task.id,
-                    UpdateTaskRequest(title = title, dueDate = dueDate, category = category, completed = completed),
+                    UpdateTaskRequest(title = title, dueDate = dueDate, topic = topic, done = done),
                 )
             }.onSuccess { updated ->
                 mutationCount++
@@ -99,7 +108,7 @@ class TasksScreenModel(
         }
     }
 
-    fun toggleCompleted(task: TaskResponse) = update(task, completed = !task.completed)
+    fun toggleDone(task: TaskResponse) = update(task, done = !task.done)
 
     fun requestDelete(task: TaskResponse) {
         mutableState.update { it.copy(pendingDelete = task) }

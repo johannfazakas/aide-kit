@@ -93,14 +93,20 @@ class VaultGitBridge(
     fun <T> write(
         commitMessage: String,
         mutate: () -> T,
+    ): T = write({ commitMessage }, mutate)
+
+    fun <T> write(
+        commitMessage: () -> String,
+        mutate: () -> T,
     ): T =
         lock.withLock {
             try {
                 val result = mutate()
+                if (git.status().call().isClean) return@withLock result
                 git.add().addFilepattern(".").call()
                 git
                     .commit()
-                    .setMessage(commitMessage)
+                    .setMessage(commitMessage())
                     .setAuthor("aide-kit", "aide-kit@local")
                     .call()
                 if (!push()) {

@@ -115,43 +115,96 @@ class TaskToolsTest {
     }
 
     @Test
-    fun `given a stored task when updateTask with done then task is done`() {
-        val created = service.create(CreateTaskRequest(title = "Dentist", topic = "health"))
-
-        val task =
-            json.decodeFromString<TaskResponse>(
-                tools.updateTask(
-                    id = created.id,
-                    title = "Dentist",
-                    dueDate = null,
-                    topic = "health",
-                    done = true,
-                ),
-            )
-
-        assertTrue(task.done)
-        assertEquals(true, repository.findById(created.id)?.done)
-    }
-
-    @Test
-    fun `given a stored task when updateTask omitting fields then fields are cleared`() {
+    fun `given a stored task when completeTask then only done changes`() {
         val created =
             service.create(
                 CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), topic = "health"),
             )
 
-        val task =
-            json.decodeFromString<TaskResponse>(
-                tools.updateTask(id = created.id, title = "Dentist"),
-            )
+        val task = json.decodeFromString<TaskResponse>(tools.completeTask(created.id))
 
-        assertNull(task.dueDate)
-        assertNull(task.topic)
+        assertTrue(task.done)
+        assertEquals(LocalDate.parse("2026-08-10"), task.dueDate)
+        assertEquals("health", task.topic)
+        assertEquals(true, repository.findById(created.id)?.done)
     }
 
     @Test
-    fun `given an unknown id when updateTask then returns not found error`() {
-        val error = errorOf(tools.updateTask(id = "missing", title = "Dentist"))
+    fun `given a done task when reopenTask then only done changes`() {
+        val created = service.create(CreateTaskRequest(title = "Dentist", topic = "health", done = true))
+
+        val task = json.decodeFromString<TaskResponse>(tools.reopenTask(created.id))
+
+        assertFalse(task.done)
+        assertEquals("health", task.topic)
+    }
+
+    @Test
+    fun `given a stored task when rescheduleTask then only the due date changes`() {
+        val created =
+            service.create(
+                CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), topic = "health"),
+            )
+
+        val task = json.decodeFromString<TaskResponse>(tools.rescheduleTask(created.id, "2026-08-20"))
+
+        assertEquals(LocalDate.parse("2026-08-20"), task.dueDate)
+        assertEquals("health", task.topic)
+    }
+
+    @Test
+    fun `given a stored task when rescheduleTask omitting the date then the due date is cleared`() {
+        val created =
+            service.create(CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10")))
+
+        val task = json.decodeFromString<TaskResponse>(tools.rescheduleTask(created.id))
+
+        assertNull(task.dueDate)
+    }
+
+    @Test
+    fun `given an invalid date when rescheduleTask then returns date format error`() {
+        val created = service.create(CreateTaskRequest(title = "Dentist"))
+
+        val error = errorOf(tools.rescheduleTask(created.id, "next week"))
+
+        assertTrue(error!!.contains("ISO-8601"))
+        assertNull(repository.findById(created.id)?.dueDate)
+    }
+
+    @Test
+    fun `given a stored task when renameTask then only the title changes`() {
+        val created = service.create(CreateTaskRequest(title = "Old", topic = "home"))
+
+        val task = json.decodeFromString<TaskResponse>(tools.renameTask(created.id, "New"))
+
+        assertEquals("New", task.title)
+        assertEquals("home", task.topic)
+    }
+
+    @Test
+    fun `given a stored task when changeTaskTopic then only the topic changes`() {
+        val created = service.create(CreateTaskRequest(title = "Dentist", topic = "home"))
+
+        val task = json.decodeFromString<TaskResponse>(tools.changeTaskTopic(created.id, "health"))
+
+        assertEquals("health", task.topic)
+        assertEquals("Dentist", task.title)
+    }
+
+    @Test
+    fun `given an unknown topic when changeTaskTopic then returns error and changes nothing`() {
+        val created = service.create(CreateTaskRequest(title = "Dentist", topic = "home"))
+
+        val error = errorOf(tools.changeTaskTopic(created.id, "nonsense"))
+
+        assertTrue(error!!.contains("nonsense"))
+        assertEquals("home", repository.findById(created.id)?.topic)
+    }
+
+    @Test
+    fun `given an unknown id when completeTask then returns not found error`() {
+        val error = errorOf(tools.completeTask("missing"))
 
         assertTrue(error!!.contains("missing"))
     }

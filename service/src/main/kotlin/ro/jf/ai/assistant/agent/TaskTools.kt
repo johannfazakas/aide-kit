@@ -11,7 +11,6 @@ import ro.jf.ai.assistant.exception.UnsupportedTaskOperationException
 import ro.jf.ai.assistant.exception.VaultConflictException
 import ro.jf.ai.assistant.service.TaskService
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
-import ro.jf.ai.assistant.transfer.UpdateTaskRequest
 import ro.jf.ai.assistant.transfer.toResponse
 
 @LLMDescription("Tools for managing the user's tasks")
@@ -74,29 +73,59 @@ class TaskTools(
 
     @Tool
     @LLMDescription(
-        "Update a task by id, replacing all its fields — including marking it done. " +
-            "Fields left out are cleared, so pass along the values that must be kept. Fetch the task first " +
-            "only when you do not already know its current values from the conversation or an earlier " +
-            "tool result. Returns the updated task as JSON.",
+        "Mark a task as done by id. Every other field stays unchanged. Returns the updated task as JSON.",
     )
-    fun updateTask(
-        @LLMDescription("The id of the task to update")
+    fun completeTask(
+        @LLMDescription("The id of the task to complete")
+        id: String,
+    ): String = guarded { json.encodeToString(service.complete(id).toResponse()) }
+
+    @Tool
+    @LLMDescription(
+        "Mark a done task as not done again by id. Every other field stays unchanged. " +
+            "Returns the updated task as JSON.",
+    )
+    fun reopenTask(
+        @LLMDescription("The id of the task to reopen")
+        id: String,
+    ): String = guarded { json.encodeToString(service.reopen(id).toResponse()) }
+
+    @Tool
+    @LLMDescription(
+        "Set, change, or clear a task's due date by id. Every other field stays unchanged. " +
+            "Returns the updated task as JSON.",
+    )
+    fun rescheduleTask(
+        @LLMDescription("The id of the task to reschedule")
+        id: String,
+        @LLMDescription("New due date in ISO-8601 format (yyyy-MM-dd); omit to clear the due date")
+        dueDate: String? = null,
+    ): String = guarded { json.encodeToString(service.reschedule(id, dueDate.toLocalDate()).toResponse()) }
+
+    @Tool
+    @LLMDescription(
+        "Change a task's title by id. Every other field stays unchanged. Returns the updated task as JSON.",
+    )
+    fun renameTask(
+        @LLMDescription("The id of the task to rename")
         id: String,
         @LLMDescription("New title of the task; must not be blank")
         title: String,
-        @LLMDescription("Due date in ISO-8601 format (yyyy-MM-dd); omit to clear it")
-        dueDate: String? = null,
-        @LLMDescription(
-            "Topic to file the task under; must be one of the known topics (see listTopics); omit to clear it",
-        )
+    ): String = guarded { json.encodeToString(service.rename(id, title).toResponse()) }
+
+    @Tool
+    @LLMDescription(
+        "Move a task to another topic by id, or remove its topic. Every other field stays unchanged. " +
+            "The topic must be one of the known topics (see listTopics); never invent one — if the user " +
+            "names an unknown topic, consult listTopics and clarify with the user instead of guessing. " +
+            "Returns the updated task as JSON.",
+    )
+    fun changeTaskTopic(
+        @LLMDescription("The id of the task to move")
+        id: String,
+        @LLMDescription("Topic to move the task to; omit to remove the topic (the task goes to the inbox)")
         topic: String? = null,
-        @LLMDescription("Whether the task is done")
-        done: Boolean = false,
-    ): String =
-        guarded {
-            val task = service.update(id, UpdateTaskRequest(title, dueDate.toLocalDate(), topic, done))
-            json.encodeToString(task.toResponse())
-        }
+    ): String = guarded { json.encodeToString(service.changeTopic(id, topic).toResponse()) }
 
     private fun String?.toLocalDate(): LocalDate? =
         this?.let {

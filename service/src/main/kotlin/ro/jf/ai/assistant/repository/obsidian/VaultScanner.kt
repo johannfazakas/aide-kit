@@ -12,9 +12,17 @@ data class VaultFile(
     val content: String,
 )
 
+data class TaskLocation(
+    val relativePath: String,
+    val startLine: Int,
+    val endLine: Int,
+    val fileTopic: String?,
+)
+
 data class ScannedTask(
     val task: Task,
     val explicitId: Boolean,
+    val location: TaskLocation,
 )
 
 data class VaultScan(
@@ -22,9 +30,11 @@ data class VaultScan(
     val topics: List<String>,
     val topicToFile: Map<String, String>,
 ) {
-    fun findById(id: String): Task? =
-        tasks.firstOrNull { it.explicitId && it.task.id == id }?.task
-            ?: tasks.firstOrNull { it.task.id == id }?.task
+    fun findScannedById(id: String): ScannedTask? =
+        tasks.firstOrNull { it.explicitId && it.task.id == id }
+            ?: tasks.firstOrNull { it.task.id == id }
+
+    fun findById(id: String): Task? = findScannedById(id)?.task
 }
 
 class VaultScanner(
@@ -39,7 +49,7 @@ class VaultScanner(
     fun scan(files: List<VaultFile>): VaultScan {
         val topics = readTopics(files)
         val topicToFile = mutableMapOf<String, String>()
-        val parsedByFile = mutableListOf<Pair<VaultFile, List<ParsedTask>>>()
+        val parsedByFile = mutableListOf<Triple<VaultFile, String?, List<ParsedTask>>>()
         val explicitIds = mutableSetOf<String>()
         var withoutExplicitId = 0
 
@@ -50,14 +60,14 @@ class VaultScanner(
             if (fileTopic != null) topicToFile.putIfAbsent(fileTopic, file.relativePath)
 
             val tasks = parseTasks(file, fileTopic).filter { it.recurrence == null || it.dueRaw != null }
-            parsedByFile += file to tasks
+            parsedByFile += Triple(file, fileTopic, tasks)
             for (parsed in tasks) {
                 if (parsed.explicitId != null) explicitIds += parsed.explicitId else withoutExplicitId++
             }
         }
 
         val scanned = mutableListOf<ScannedTask>()
-        for ((file, tasks) in parsedByFile) {
+        for ((file, fileTopic, tasks) in parsedByFile) {
             val occurrences = mutableMapOf<String, Int>()
             for (parsed in tasks) {
                 val signature = parsed.signature()
@@ -78,6 +88,13 @@ class VaultScanner(
                                 done = parsed.done,
                             ),
                         explicitId = parsed.explicitId != null,
+                        location =
+                            TaskLocation(
+                                relativePath = file.relativePath,
+                                startLine = parsed.startLine,
+                                endLine = parsed.endLine,
+                                fileTopic = fileTopic,
+                            ),
                     )
             }
         }
@@ -107,6 +124,7 @@ class VaultScanner(
                 i++
                 continue
             }
+            val startLine = i
             val done = match.groupValues[2] != " "
             val title = stripEmphasis(match.groupValues[3])
             val fields = mutableMapOf<String, String>()
@@ -127,6 +145,8 @@ class VaultScanner(
                     effectiveTopic = inlineTopic ?: fileTopic,
                     recurrence = fields["recurrence"],
                     explicitId = fields["id"]?.takeIf { it.isNotBlank() },
+                    startLine = startLine,
+                    endLine = i,
                 )
         }
         return parsed
@@ -228,6 +248,8 @@ class VaultScanner(
         val effectiveTopic: String?,
         val recurrence: String?,
         val explicitId: String?,
+        val startLine: Int,
+        val endLine: Int,
     ) {
         fun signature(): String =
             listOf(title, dueRaw.orEmpty(), effectiveTopic.orEmpty(), recurrence.orEmpty()).joinToString(" ")

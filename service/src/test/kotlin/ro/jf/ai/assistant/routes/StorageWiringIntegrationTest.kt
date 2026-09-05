@@ -11,18 +11,20 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
-import kotlinx.datetime.LocalDate
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.transport.URIish
 import org.koin.dsl.module
 import ro.jf.ai.assistant.config.StartupConfig
 import ro.jf.ai.assistant.config.serviceModule
 import ro.jf.ai.assistant.exception.UnsupportedTaskOperationException
-import ro.jf.ai.assistant.model.Task
 import ro.jf.ai.assistant.module
 import ro.jf.ai.assistant.repository.InMemoryTaskRepository
 import ro.jf.ai.assistant.repository.TaskRepository
 import ro.jf.ai.assistant.transfer.ErrorResponse
 import ro.jf.ai.assistant.transfer.TaskResponse
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
+import java.io.File
+import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -32,14 +34,6 @@ class StorageWiringIntegrationTest {
     private class UnsupportedOpsRepository(
         private val delegate: InMemoryTaskRepository = InMemoryTaskRepository(),
     ) : TaskRepository by delegate {
-        override fun update(
-            id: String,
-            title: String,
-            dueDate: LocalDate?,
-            topic: String?,
-            done: Boolean,
-        ): Task = throw UnsupportedTaskOperationException("Updating tasks")
-
         override fun delete(id: String): Boolean = throw UnsupportedTaskOperationException("Deleting tasks")
     }
 
@@ -71,23 +65,69 @@ class StorageWiringIntegrationTest {
             assertFailsWith<IllegalArgumentException> { startApplication() }
         }
 
+    private fun obsidianRemoteSeededWith(files: Map<String, String>): File {
+        val remote = Files.createTempDirectory("remote").toFile()
+        Git
+            .init()
+            .setBare(true)
+            .setDirectory(remote)
+            .setInitialBranch("main")
+            .call()
+            .close()
+        val seedDir = Files.createTempDirectory("seed").toFile()
+        Git.init().setDirectory(seedDir).setInitialBranch("main").call().use { seed ->
+            files.forEach { (path, content) ->
+                File(seedDir, path).apply {
+                    parentFile.mkdirs()
+                    writeText(content)
+                }
+            }
+            seed.add().addFilepattern(".").call()
+            seed.commit().setMessage("seed").call()
+            seed
+                .remoteAdd()
+                .setName("origin")
+                .setUri(URIish(remote.toURI().toString()))
+                .call()
+            seed.push().setRemote("origin").call()
+        }
+        return remote
+    }
+
     @Test
-    fun `given an unsupported-ops backend when updating then responds 501 with message`() =
+    fun `given obsidian storage when updating via PUT then the vault reflects the change`() =
         testApplication {
-            val overrides = module { single<TaskRepository> { UnsupportedOpsRepository() } }
+            val remote =
+                obsidianRemoteSeededWith(
+                    mapOf(
+                        "organization/Topics.md" to "---\ntopics: [home]\n---\n",
+                        "areas/Home.md" to
+                            "---\ntopic: home\n---\n## Tasks\n\n- [ ] **Buy milk**\n      [id:: f3k2a9aa]\n",
+                    ),
+                )
+            val cloneDir = File(Files.createTempDirectory("host").toFile(), "clone")
             application {
-                module(StartupConfig(openCodeApiKey = "test-key"), koinModules = listOf(serviceModule(), overrides))
+                module(
+                    StartupConfig(
+                        openCodeApiKey = "test-key",
+                        taskStorage = "obsidian",
+                        obsidianRepoUrl = remote.toURI().toString(),
+                        obsidianRepoToken = "unused",
+                        obsidianCloneDir = cloneDir.path,
+                    ),
+                )
             }
             val client = createClient { install(ContentNegotiation) { json() } }
 
             val response =
-                client.put("/api/v1/tasks/any-id") {
+                client.put("/api/v1/tasks/f3k2a9aa") {
                     contentType(ContentType.Application.Json)
-                    setBody(UpdateTaskRequest(title = "Title"))
+                    setBody(UpdateTaskRequest(title = "Buy milk", topic = "home", done = true))
                 }
 
-            assertEquals(HttpStatusCode.NotImplemented, response.status)
-            assertTrue(response.body<ErrorResponse>().message.isNotBlank())
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertTrue(response.body<TaskResponse>().done)
+            assertTrue(File(cloneDir, "areas/Home.md").readText().contains("- [x] **Buy milk**"))
         }
 
     @Test

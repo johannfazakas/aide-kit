@@ -21,4 +21,4 @@ Personal aid application: Ktor backend where AI agents help with daily life, sta
 
 ## Planned directions
 
-Agent-side deletion, task updates/completion against the vault (unsupported in Obsidian mode today — id-stamped on first mutation), recurrence awareness, and persistent conversation storage. Task persistence itself now exists via the Obsidian backend. `ROADMAP.md` tracks the owner's backlog — keep it in sync: remove an item there once it is implemented.
+Agent-side deletion, recurrence awareness, and persistent conversation storage. Task persistence and edits (update/complete, surgical vault rewrites, id-stamped on first mutation) now exist via the Obsidian backend. `ROADMAP.md` tracks the owner's backlog — keep it in sync: remove an item there once it is implemented.

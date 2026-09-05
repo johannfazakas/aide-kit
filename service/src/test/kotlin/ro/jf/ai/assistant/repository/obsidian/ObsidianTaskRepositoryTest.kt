@@ -233,13 +233,214 @@ class ObsidianTaskRepositoryTest {
         assertEquals(listOf("finance", "travel"), repository.listTopics())
     }
 
-    @Test
-    fun `given obsidian storage when updating then it is unsupported`() {
-        val (repository, _) = repoOn(mapOf("areas/Home.md" to "---\ntopic: home\n---\n## Tasks\n"))
+    private val homeTaskFile =
+        "---\ntopic: home\n---\n## Tasks\n\n" +
+            "- [ ] **Buy milk**\n" +
+            "      [due:: 2026-09-05 14:00]\n" +
+            "      [id:: f3k2a9aa]\n" +
+            "      [rid:: weekly]\n"
 
-        assertFailsWith<UnsupportedTaskOperationException> {
-            repository.update("id000001", "Title", null, "home", true)
-        }
+    private fun commitCountOf(remote: File): Int = Git.open(remote).use { it.log().call().count() }
+
+    @Test
+    fun `given a task with rid and due time when completing then only the checkbox character changes`() {
+        val (repository, cloneDir) = repoOn(mapOf("areas/Home.md" to homeTaskFile))
+
+        val updated = repository.update("f3k2a9aa", "Buy milk", LocalDate.parse("2026-09-05"), "home", true)
+
+        assertEquals(true, updated?.done)
+        assertEquals(
+            homeTaskFile.replace("- [ ]", "- [x]"),
+            File(cloneDir, "areas/Home.md").readText(),
+        )
+    }
+
+    @Test
+    fun `given a done task when reopening then the checkbox reverts and nothing else changes`() {
+        val (repository, cloneDir) =
+            repoOn(mapOf("areas/Home.md" to homeTaskFile.replace("- [ ]", "- [x]")))
+
+        val updated = repository.update("f3k2a9aa", "Buy milk", LocalDate.parse("2026-09-05"), "home", false)
+
+        assertEquals(false, updated?.done)
+        assertEquals(homeTaskFile, File(cloneDir, "areas/Home.md").readText())
+    }
+
+    @Test
+    fun `given a due date change when updating then only the due line is rewritten`() {
+        val (repository, cloneDir) = repoOn(mapOf("areas/Home.md" to homeTaskFile))
+
+        repository.update("f3k2a9aa", "Buy milk", LocalDate.parse("2026-09-06"), "home", false)
+
+        assertEquals(
+            homeTaskFile.replace("[due:: 2026-09-05 14:00]", "[due:: 2026-09-06]"),
+            File(cloneDir, "areas/Home.md").readText(),
+        )
+    }
+
+    @Test
+    fun `given a title change when updating then the title is rewritten in bold`() {
+        val (repository, cloneDir) = repoOn(mapOf("areas/Home.md" to homeTaskFile))
+
+        repository.update("f3k2a9aa", "Buy oat milk", LocalDate.parse("2026-09-05"), "home", false)
+
+        assertEquals(
+            homeTaskFile.replace("**Buy milk**", "**Buy oat milk**"),
+            File(cloneDir, "areas/Home.md").readText(),
+        )
+    }
+
+    @Test
+    fun `given a task without an explicit id when completing then its derived id is stamped and kept`() {
+        val (repository, cloneDir) =
+            repoOn(mapOf(inboxPath to "# Inbox\n\n## Tasks\n\n- [ ] Call dentist\n"))
+        val derivedId = repository.findAll().single().id
+
+        val updated = repository.update(derivedId, "Call dentist", null, null, true)
+
+        assertEquals(derivedId, updated?.id)
+        assertEquals(
+            "# Inbox\n\n## Tasks\n\n- [x] Call dentist\n      [id:: $derivedId]\n",
+            File(cloneDir, inboxPath).readText(),
+        )
+        assertEquals(derivedId, repository.findById(derivedId)?.id)
+    }
+
+    @Test
+    fun `given a topic change from a topic file when updating then the block moves to the new topic file`() {
+        val (repository, cloneDir) =
+            repoOn(
+                mapOf(
+                    "areas/Home.md" to homeTaskFile,
+                    "areas/Health.md" to "---\ntopic: health\n---\n## Tasks\n",
+                ),
+            )
+
+        val updated = repository.update("f3k2a9aa", "Buy milk", LocalDate.parse("2026-09-05"), "health", false)
+
+        assertEquals("health", updated?.topic)
+        assertEquals("---\ntopic: home\n---\n## Tasks\n", File(cloneDir, "areas/Home.md").readText())
+        assertEquals(
+            "---\ntopic: health\n---\n## Tasks\n\n" +
+                "- [ ] **Buy milk**\n" +
+                "      [due:: 2026-09-05 14:00]\n" +
+                "      [id:: f3k2a9aa]\n" +
+                "      [rid:: weekly]\n",
+            File(cloneDir, "areas/Health.md").readText(),
+        )
+    }
+
+    @Test
+    fun `given a topic change on an inbox task when updating then it stays in place with an inline topic`() {
+        val (repository, cloneDir) =
+            repoOn(
+                mapOf(
+                    inboxPath to "# Inbox\n\n## Tasks\n\n- [ ] Sort me\n      [id:: aaaa1111]\n",
+                    "areas/Health.md" to "---\ntopic: health\n---\n## Tasks\n",
+                ),
+            )
+
+        val updated = repository.update("aaaa1111", "Sort me", null, "health", false)
+
+        assertEquals("health", updated?.topic)
+        assertEquals(
+            "# Inbox\n\n## Tasks\n\n- [ ] Sort me\n      [id:: aaaa1111]\n      [topic:: health]\n",
+            File(cloneDir, inboxPath).readText(),
+        )
+    }
+
+    @Test
+    fun `given an update when it succeeds then the remote gains exactly one commit`() {
+        val remote = remoteSeededWith(mapOf("areas/Home.md" to homeTaskFile))
+        val cloneDir = File(tempDir("host"), "clone")
+        val bridge =
+            VaultGitBridge(
+                ObsidianConfig(
+                    repoUrl = remote.toURI().toString(),
+                    token = null,
+                    branch = "main",
+                    cloneDir = cloneDir,
+                    inboxPath = inboxPath,
+                    registryPath = registryPath,
+                ),
+            )
+        val repository =
+            ObsidianTaskRepository(
+                bridge = bridge,
+                scanner = VaultScanner(inboxPath = inboxPath, registryPath = registryPath),
+                inboxPath = inboxPath,
+            )
+        val before = commitCountOf(remote)
+
+        repository.update("f3k2a9aa", "Buy milk", LocalDate.parse("2026-09-05"), "home", true)
+
+        assertEquals(before + 1, commitCountOf(remote))
+    }
+
+    @Test
+    fun `given identical values when updating then no commit is created`() {
+        val remote = remoteSeededWith(mapOf("areas/Home.md" to homeTaskFile))
+        val cloneDir = File(tempDir("host"), "clone")
+        val bridge =
+            VaultGitBridge(
+                ObsidianConfig(
+                    repoUrl = remote.toURI().toString(),
+                    token = null,
+                    branch = "main",
+                    cloneDir = cloneDir,
+                    inboxPath = inboxPath,
+                    registryPath = registryPath,
+                ),
+            )
+        val repository =
+            ObsidianTaskRepository(
+                bridge = bridge,
+                scanner = VaultScanner(inboxPath = inboxPath, registryPath = registryPath),
+                inboxPath = inboxPath,
+            )
+        val before = commitCountOf(remote)
+
+        val updated = repository.update("f3k2a9aa", "Buy milk", LocalDate.parse("2026-09-05"), "home", false)
+
+        assertEquals("f3k2a9aa", updated?.id)
+        assertEquals(before, commitCountOf(remote))
+        assertEquals(homeTaskFile, File(cloneDir, "areas/Home.md").readText())
+    }
+
+    @Test
+    fun `given a stale derived id when updating then null is returned and nothing changes`() {
+        val remote = remoteSeededWith(mapOf(inboxPath to "# Inbox\n\n## Tasks\n\n- [ ] Old title\n"))
+        val cloneDir = File(tempDir("host"), "clone")
+        val bridge =
+            VaultGitBridge(
+                ObsidianConfig(
+                    repoUrl = remote.toURI().toString(),
+                    token = null,
+                    branch = "main",
+                    cloneDir = cloneDir,
+                    inboxPath = inboxPath,
+                    registryPath = registryPath,
+                ),
+            )
+        val repository =
+            ObsidianTaskRepository(
+                bridge = bridge,
+                scanner = VaultScanner(inboxPath = inboxPath, registryPath = registryPath),
+                inboxPath = inboxPath,
+            )
+        val staleId = repository.findAll().single().id
+        pushToRemote(remote, inboxPath, "# Inbox\n\n## Tasks\n\n- [ ] New title\n")
+        val before = commitCountOf(remote)
+
+        assertNull(repository.update(staleId, "Old title", null, null, true))
+        assertEquals(before, commitCountOf(remote))
+    }
+
+    @Test
+    fun `given an unknown id when updating then null is returned`() {
+        val (repository, _) = repoOn(mapOf("areas/Home.md" to homeTaskFile))
+
+        assertNull(repository.update("missing0", "Title", null, null, true))
     }
 
     @Test

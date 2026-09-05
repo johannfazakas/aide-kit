@@ -21,6 +21,7 @@ import ro.jf.ai.assistant.module
 import ro.jf.ai.assistant.repository.DEFAULT_TOPICS
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.ErrorResponse
+import ro.jf.ai.assistant.transfer.RescheduleTaskRequest
 import ro.jf.ai.assistant.transfer.TaskResponse
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
 import kotlin.test.Test
@@ -98,6 +99,95 @@ class TaskApiIntegrationTest {
             val deleteResponse = client.delete("/api/v1/tasks/${created.id}")
             assertEquals(HttpStatusCode.NoContent, deleteResponse.status)
             assertEquals(HttpStatusCode.NotFound, client.get("/api/v1/tasks/${created.id}").status)
+        }
+
+    private suspend fun HttpClient.createTask(request: CreateTaskRequest): TaskResponse =
+        post("/api/v1/tasks") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body<TaskResponse>()
+
+    @Test
+    fun `given a task when completing via the intent endpoint then only done changes`() =
+        apiTest { client ->
+            val created =
+                client.createTask(
+                    CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10"), topic = "health"),
+                )
+
+            val response = client.post("/api/v1/tasks/${created.id}/complete")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(created.copy(done = true), response.body<TaskResponse>())
+        }
+
+    @Test
+    fun `given a done task when reopening via the intent endpoint then only done changes`() =
+        apiTest { client ->
+            val created = client.createTask(CreateTaskRequest(title = "Dentist", topic = "health", done = true))
+
+            val response = client.post("/api/v1/tasks/${created.id}/reopen")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(created.copy(done = false), response.body<TaskResponse>())
+        }
+
+    @Test
+    fun `given a task when rescheduling via the intent endpoint then only the due date changes`() =
+        apiTest { client ->
+            val created =
+                client.createTask(
+                    CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10"), topic = "health"),
+                )
+
+            val response =
+                client.post("/api/v1/tasks/${created.id}/reschedule") {
+                    contentType(ContentType.Application.Json)
+                    setBody(RescheduleTaskRequest(dueDate = LocalDate.parse("2026-09-20")))
+                }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(created.copy(dueDate = LocalDate.parse("2026-09-20")), response.body<TaskResponse>())
+        }
+
+    @Test
+    fun `given a task with a due date when rescheduling with null then the due date is cleared`() =
+        apiTest { client ->
+            val created =
+                client.createTask(CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10")))
+
+            val response =
+                client.post("/api/v1/tasks/${created.id}/reschedule") {
+                    contentType(ContentType.Application.Json)
+                    setBody(RescheduleTaskRequest(dueDate = null))
+                }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertNull(response.body<TaskResponse>().dueDate)
+        }
+
+    @Test
+    fun `given an unknown id when completing then responds 404 with message`() =
+        apiTest { client ->
+            val response = client.post("/api/v1/tasks/missing/complete")
+
+            assertEquals(HttpStatusCode.NotFound, response.status)
+            assertTrue(response.body<ErrorResponse>().message.isNotBlank())
+        }
+
+    @Test
+    fun `given an invalid due date when rescheduling then responds 400 with message`() =
+        apiTest { client ->
+            val created = client.createTask(CreateTaskRequest(title = "Dentist"))
+
+            val response =
+                client.post("/api/v1/tasks/${created.id}/reschedule") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"dueDate":"not-a-date"}""")
+                }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertTrue(response.body<ErrorResponse>().message.isNotBlank())
         }
 
     @Test

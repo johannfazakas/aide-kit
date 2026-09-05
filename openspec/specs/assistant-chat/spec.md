@@ -3,9 +3,7 @@
 ## Purpose
 
 Provide a natural-language assistant over the task API: a chat endpoint with session-scoped conversation memory, backed by an LLM agent that can list, create, and update tasks through tools, with clear error behavior when the LLM is unavailable or misconfigured.
-
 ## Requirements
-
 ### Requirement: Chat endpoint
 The system SHALL expose `POST /api/v1/chat` accepting a JSON body `{"sessionId": "<id>"?, "message": "<text>"}` where `sessionId` is optional, and responding with a JSON body `{"sessionId": "<id>", "reply": "<text>"}`. When the request omits `sessionId`, the system SHALL mint a new session id and return it. When the request includes a known `sessionId`, the system SHALL continue that conversation. When the request includes an unknown `sessionId`, the system SHALL NOT adopt it — it SHALL mint a fresh session id and return it. The returned `sessionId` identifies the conversation for follow-up requests.
 
@@ -63,7 +61,7 @@ A web chat interface SHALL be available (the Compose web client's chat screen, s
 - **THEN** a fresh conversation begins with no prior history
 
 ### Requirement: Task management through the assistant
-The assistant SHALL be able to list tasks (optionally filtered by topic), list the known topics, retrieve a task by id, create tasks, and update tasks (including marking them done) by invoking tools backed by the existing task service. A created task's topic must be one of the known topics or absent; when the user names a topic outside the list, the assistant SHALL consult the topics tool and clarify with the user (suggesting close matches or offering to capture without a topic) rather than guessing or inventing a topic. The assistant SHALL NOT be able to delete tasks. When the active storage backend does not support an operation (updates in Obsidian mode), the tool SHALL return the backend's not-supported error to the assistant, and the reply SHALL relay that the operation is not available yet.
+The assistant SHALL be able to list tasks (optionally filtered by topic), list the known topics, retrieve a task by id, create tasks, and edit tasks through intent-specific tools backed by the existing task service: complete, reopen, reschedule (set or clear the due date), rename, and change topic. Each edit tool SHALL take the task id plus only the value being changed; the service merges the change with the task's current state, so the assistant never supplies — and can never accidentally erase — fields it is not changing. A created task's topic, and the target topic of a topic change, must be one of the known topics or absent; when the user names a topic outside the list, the assistant SHALL consult the topics tool and clarify with the user (suggesting close matches or offering to capture without a topic) rather than guessing or inventing a topic. The assistant SHALL NOT be able to delete tasks and SHALL NOT be given a full-replace update tool.
 
 #### Scenario: Creating a task via natural language
 - **WHEN** the user asks the assistant to add a task with a given title
@@ -75,7 +73,23 @@ The assistant SHALL be able to list tasks (optionally filtered by topic), list t
 
 #### Scenario: Completing a task via natural language
 - **WHEN** the user asks the assistant to mark an identified task as done
-- **THEN** the task is updated with `done = true` through the task service and the reply confirms it
+- **THEN** the complete tool is invoked with the task's id, the task ends up `done` with every other field unchanged, and the reply confirms it
+
+#### Scenario: Reopening a task via natural language
+- **WHEN** the user asks the assistant to reopen a task that is done
+- **THEN** the reopen tool is invoked and the task ends up not done with every other field unchanged
+
+#### Scenario: Rescheduling a task via natural language
+- **WHEN** the user asks the assistant to move a task to another day
+- **THEN** the reschedule tool is invoked with the resolved date and the task carries the new due date with every other field unchanged
+
+#### Scenario: Renaming a task via natural language
+- **WHEN** the user asks the assistant to rename an identified task
+- **THEN** the rename tool is invoked and the task carries the new title with every other field unchanged
+
+#### Scenario: Changing a task's topic via natural language
+- **WHEN** the user asks the assistant to move a task to another known topic
+- **THEN** the change-topic tool is invoked and the task ends up under the new topic
 
 #### Scenario: No deletion capability
 - **WHEN** the user asks the assistant to delete a task
@@ -83,15 +97,15 @@ The assistant SHALL be able to list tasks (optionally filtered by topic), list t
 
 #### Scenario: Unknown topic clarified instead of guessed
 - **WHEN** the user asks for a task under a topic that is not in the known-topics list
-- **THEN** no task is created with that topic and the reply asks the user to pick a known topic (or none), naming close matches when they exist
+- **THEN** no task is created or moved with that topic and the reply asks the user to pick a known topic (or none), naming close matches when they exist
 
 #### Scenario: Capture without a topic
 - **WHEN** the user asks the assistant to add a task and no topic is given or agreed
 - **THEN** the task is created without a topic and the reply confirms it landed in the inbox for later grooming
 
-#### Scenario: Update not supported by the backend
-- **WHEN** Obsidian storage is active and the user asks the assistant to mark a task as done
-- **THEN** the update tool returns the not-supported error, no vault content changes, and the reply explains that completing tasks is not available yet
+#### Scenario: Vault conflict surfaces readably
+- **WHEN** Obsidian storage is active and an edit fails because the vault has conflicting edits
+- **THEN** the tool returns the backend's error, no vault content changes, and the reply explains the task was not saved
 
 ### Requirement: Multi-step tool execution
 The assistant SHALL complete multi-step tool flows within a single chat request: when carrying out an instruction requires several tool invocations in sequence (such as looking a task up and then updating it), it SHALL keep invoking tools after receiving tool results until the instruction is carried out. Narration text accompanying a tool call SHALL NOT end the agent run before that tool call is executed, and the assistant SHALL NOT reply that it is about to perform an action without performing it in the same request.
@@ -154,3 +168,4 @@ The service SHALL refuse to start when the LLM provider API key (`OPENCODE_API_K
 #### Scenario: Missing key aborts startup
 - **WHEN** the service starts without `OPENCODE_API_KEY`
 - **THEN** it exits with an error naming the variable and serves no requests
+

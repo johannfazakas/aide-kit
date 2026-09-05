@@ -10,9 +10,8 @@ Store chat memory in postgres so it survives restarts
 
 ### Obsidian tasks integration
 
-The first iteration (JGit-backed list/get/create, `TASK_STORAGE=obsidian`) has landed. Deferred follow-ups:
+JGit-backed list/get/create and surgical task edits (update/complete against the vault, byte-identical round-trip for untouched content) have landed. Deferred follow-ups:
 
-- Task updates and completion against the vault (surgical edits: flip checkbox only, rewrite `[due::]` only; byte-identical round-trip for untouched content)
 - Delete operations against the vault
 - Recurrence awareness (template + `[rid::]` instances model; agent may create templates and complete instances, never materialize them)
 - Expose `[estimate::]` (and due times) in the task model, API, and capture — the indexer already recognizes the field but drops it

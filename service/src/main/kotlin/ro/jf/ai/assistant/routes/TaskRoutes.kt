@@ -11,6 +11,7 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import ro.jf.ai.assistant.service.TaskService
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
+import ro.jf.ai.assistant.transfer.RescheduleTaskRequest
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
 import ro.jf.ai.assistant.transfer.toResponse
 
@@ -30,6 +31,16 @@ fun Route.taskRoutes(service: TaskService) {
         put("{id}") {
             val task = service.update(call.parameters["id"]!!, call.receive<UpdateTaskRequest>())
             call.respond(task.toResponse())
+        }
+        post("{id}/complete") {
+            call.respond(service.complete(call.parameters["id"]!!).toResponse())
+        }
+        post("{id}/reopen") {
+            call.respond(service.reopen(call.parameters["id"]!!).toResponse())
+        }
+        post("{id}/reschedule") {
+            val request = call.receive<RescheduleTaskRequest>()
+            call.respond(service.reschedule(call.parameters["id"]!!, request.dueDate).toResponse())
         }
         delete("{id}") {
             service.delete(call.parameters["id"]!!)

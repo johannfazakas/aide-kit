@@ -1,5 +1,6 @@
 package ro.jf.ai.assistant.service
 
+import kotlinx.datetime.LocalDate
 import ro.jf.ai.assistant.exception.TaskNotFoundException
 import ro.jf.ai.assistant.model.Task
 import ro.jf.ai.assistant.repository.TaskRepository
@@ -31,8 +32,43 @@ class TaskService(
             ?: throw TaskNotFoundException(id)
     }
 
+    fun complete(id: String): Task = applyEdit(id) { it.copy(done = true) }
+
+    fun reopen(id: String): Task = applyEdit(id) { it.copy(done = false) }
+
+    fun reschedule(
+        id: String,
+        dueDate: LocalDate?,
+    ): Task = applyEdit(id) { it.copy(dueDate = dueDate) }
+
+    fun rename(
+        id: String,
+        title: String,
+    ): Task {
+        require(title.isNotBlank()) { "Title must not be blank" }
+        return applyEdit(id) { it.copy(title = title) }
+    }
+
+    fun changeTopic(
+        id: String,
+        topic: String?,
+    ): Task {
+        validateTopic(topic)
+        return applyEdit(id) { it.copy(topic = topic) }
+    }
+
     fun delete(id: String) {
         if (!repository.delete(id)) throw TaskNotFoundException(id)
+    }
+
+    private fun applyEdit(
+        id: String,
+        transform: (Task) -> Task,
+    ): Task {
+        val current = get(id)
+        val target = transform(current)
+        return repository.update(current.id, target.title, target.dueDate, target.topic, target.done)
+            ?: throw TaskNotFoundException(id)
     }
 
     private fun validateTopic(topic: String?) {

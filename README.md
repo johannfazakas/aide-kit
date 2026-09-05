@@ -18,8 +18,8 @@ A personal aid application: a backend where AI agents help manage aspects of dai
 ```
 
 - Gradle modules: `service/` (the Ktor application), `shared/` (the wire contract — transfer models, `kotlinx-datetime` dates as ISO `yyyy-MM-dd`), `client-core/` (client-side logic: per-area API clients and screen models, shared by both clients), and `client/` (Compose Multiplatform UI: web via wasmJs and the Android app from the same screens). The service depends only on `shared` — never on client modules. Shared build config lives in a `gradle/plugins` convention plugin.
-- The assistant (package `agent`) is a [Koog](https://github.com/JetBrains/koog) agent wired through the `koog-ktor` plugin, running a custom strategy graph (`agent/AssistantStrategy.kt`) that keeps executing tool calls until a response contains none, so multi-step flows complete reliably. It holds per-session conversation memory (in-memory, bounded — see [Chat](#chat)) and can list tasks and topics, create, update, and complete tasks, but not delete them (the web UI can, via REST). A task's grouping is its `topic` (one of the known topics, or none) and its completion state is `done`; the assistant files tasks only under known topics and clarifies rather than inventing one. A current-date tool lets it resolve relative due dates like "tomorrow" or "next Friday" on its own.
-- The task store is chosen by the active startup profile at the composition root (see [Configuration](#configuration)): `local` (default) uses an ephemeral in-memory store, `live` uses a git clone of an Obsidian vault that is the live source of truth. The vault backend supports list, get, and create; update and delete return `501` (deferred). The known-topics list is vault-owned (`organization/Topics.md`) under the `live` profile and a seeded list under `local`.
+- The assistant (package `agent`) is a [Koog](https://github.com/JetBrains/koog) agent wired through the `koog-ktor` plugin, running a custom strategy graph (`agent/AssistantStrategy.kt`) that keeps executing tool calls until a response contains none, so multi-step flows complete reliably. It holds per-session conversation memory (in-memory, bounded — see [Chat](#chat)) and can list tasks and topics, create tasks, and edit them through intent tools (complete, reopen, reschedule, rename, change topic — each touches one field, so nothing is erased by omission), but not delete them (the web UI can, via REST). A task's grouping is its `topic` (one of the known topics, or none) and its completion state is `done`; the assistant files tasks only under known topics and clarifies rather than inventing one. A current-date tool lets it resolve relative due dates like "tomorrow" or "next Friday" on its own.
+- The task store is chosen by the active startup profile at the composition root (see [Configuration](#configuration)): `local` (default) uses an ephemeral in-memory store, `live` uses a git clone of an Obsidian vault that is the live source of truth. The vault backend supports list, get, create, and update (surgical edits that rewrite only changed lines and preserve everything else byte-for-byte, including fields the model doesn't know); delete returns `501` (deferred). The known-topics list is vault-owned (`organization/Topics.md`) under the `live` profile and a seeded list under `local`.
 - Requirements and change history live in `openspec/` ([OpenSpec](https://github.com/Fission-AI/OpenSpec) workflow: specs under `openspec/specs/`, changes under `openspec/changes/`).
 
 ## Tech Stack
@@ -88,7 +88,10 @@ Code style is enforced by [ktlint](https://pinterest.github.io/ktlint/) (`ktlint
 | POST   | `/api/v1/tasks`      | Create a task (`topic`, when set, must be a known topic) |
 | GET    | `/api/v1/tasks`      | List tasks (optional `?topic=`)                   |
 | GET    | `/api/v1/tasks/{id}` | Get a task                                        |
-| PUT    | `/api/v1/tasks/{id}` | Full-replace update (also used to mark done); `501` in Obsidian mode |
+| PUT    | `/api/v1/tasks/{id}` | Full-replace update (also used to mark done)      |
+| POST   | `/api/v1/tasks/{id}/complete` | Mark a task done; other fields untouched |
+| POST   | `/api/v1/tasks/{id}/reopen` | Mark a task not done; other fields untouched |
+| POST   | `/api/v1/tasks/{id}/reschedule` | Set the due date (`{"dueDate"}`, null/absent clears); other fields untouched |
 | DELETE | `/api/v1/tasks/{id}` | Delete a task; `501` in Obsidian mode             |
 | GET    | `/api/v1/topics`     | List the known topics                             |
 | POST   | `/api/v1/chat`       | Talk to the assistant: `{"message", "sessionId"?}` → `{"sessionId", "reply"}` |
@@ -101,7 +104,7 @@ Errors are JSON `{"message": "..."}`: `400` invalid input (including an unknown 
 
 ## Web client
 
-Open [http://localhost:7081](http://localhost:7081) for the web app: a task screen (list with filter, create/edit forms whose topic is picked from the known topics or left unset, completion toggles, delete with confirmation, refresh) and a chat screen. The task list re-fetches when you switch to it or press refresh — useful after the assistant changed tasks in chat. Unsupported operations (edit/delete against Obsidian storage) surface their error through the screen.
+Open [http://localhost:7081](http://localhost:7081) for the web app: a task screen (list with filter, create/edit forms whose topic is picked from the known topics or left unset, completion toggles, delete with confirmation, refresh) and a chat screen. The task list re-fetches when you switch to it or press refresh — useful after the assistant changed tasks in chat. Unsupported operations (delete against Obsidian storage) surface their error through the screen.
 
 Keyboard shortcuts: **Enter** sends the chat message (**Shift+Enter** inserts a newline) and submits the task forms; **Tab / Shift+Tab** moves between form fields; **Ctrl/Cmd+F** opens an in-app find over the chat transcript (match count, Enter/Shift+Enter cycles, Esc closes) — the app renders to a canvas, so the browser's native find can't see its text; on the task screen it focuses the filter field instead.
 
@@ -133,4 +136,4 @@ The assistant's conversation has memory, so you can refer back ("mark it done") 
 
 **Conversation caveats**: history is in memory only (lost on restart) and bounded to the most recent turns, so a very long conversation forgets its earliest messages.
 
-**Storage caveat**: under the default `local` profile tasks live in memory only — data is lost on restart. Start with `APP_PROFILE=live` (see [Task storage](#task-storage)) to persist them in an Obsidian vault; that backend supports list, get, and create, while update and delete are deferred (they return `501`).
+**Storage caveat**: under the default `local` profile tasks live in memory only — data is lost on restart. Start with `APP_PROFILE=live` (see [Task storage](#task-storage)) to persist them in an Obsidian vault; that backend supports list, get, create, and update, while delete is deferred (it returns `501`).

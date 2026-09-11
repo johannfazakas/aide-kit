@@ -4,6 +4,7 @@ Personal aid application: Ktor backend where AI agents help with daily life, sta
 
 ## Working on this repo
 
+- Git: work on a single branch (`main`) and commit/push there directly. Only create a separate branch or open a PR when explicitly instructed.
 - Development follows the OpenSpec workflow (`/opsx:*` commands): non-trivial changes go through a change proposal under `openspec/changes/`, and `openspec/specs/` holds the current requirements. Sync and archive changes when done.
 - Keep README.md accurate, simple, and concise. When behavior, architecture, or commands change, update it as part of the same change — it should always reflect reality without growing bloated.
 - Layering is `routes` → `service` → `repository`; the assistant's tools (`agent/TaskTools`) must go through `TaskService`, never the repository directly. Service beans are declared in a Koin module (`config/KoinConfig.kt`, where `serviceModule` also builds the `TaskRepository` from the startup config) and resolved only at the composition root (`Application.module`, tests override via its `koinModules` parameter) — layers receive dependencies as plain parameters; env config is passed as a single `StartupConfig` parameter, not as beans.

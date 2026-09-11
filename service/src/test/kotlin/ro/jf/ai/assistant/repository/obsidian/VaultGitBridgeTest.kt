@@ -140,4 +140,22 @@ class VaultGitBridgeTest {
         assertFalse(content.contains("LOCAL"))
         Git.open(cloneDir).use { assertTrue(it.status().call().isClean) }
     }
+
+    @Test
+    fun `given a mutate that throws a domain error when writing then the error propagates and the clone stays clean`() {
+        val remote = bareRemoteWithSeed()
+        val cloneDir = File(tempDir("host"), "clone")
+        val bridge = bridgeOn(remote, cloneDir)
+        val before = commitCountOf(remote)
+
+        assertFailsWith<IllegalStateException> {
+            bridge.write<Unit>("agent: update task") {
+                File(cloneDir, "areas/Home.md").appendText("- [ ] partial write\n")
+                error("boom")
+            }
+        }
+
+        assertEquals(before, commitCountOf(remote))
+        Git.open(cloneDir).use { assertTrue(it.status().call().isClean) }
+    }
 }

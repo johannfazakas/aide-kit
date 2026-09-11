@@ -33,7 +33,10 @@ class TransferModelsSerializationTest {
 
         val encoded = json.encodeToString(TaskResponse.serializer(), response)
 
-        assertEquals("""{"id":"t1","title":"Pay rent","dueDate":null,"topic":null,"done":true}""", encoded)
+        assertEquals(
+            """{"id":"t1","title":"Pay rent","dueDate":null,"topic":null,"done":true}""",
+            encoded,
+        )
     }
 
     @Test

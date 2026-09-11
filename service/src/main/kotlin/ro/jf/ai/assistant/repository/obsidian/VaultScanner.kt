@@ -43,9 +43,6 @@ class VaultScanner(
 ) {
     private val logger = LoggerFactory.getLogger(VaultScanner::class.java)
 
-    private val checkboxRegex = Regex("""^(\s*)[-*+] \[( |x|X|-)]\s+(.*)$""")
-    private val fieldRegex = Regex("""\[([A-Za-z_][\w-]*)::\s*([^]]*)]""")
-
     fun scan(files: List<VaultFile>): VaultScan {
         val topics = readTopics(files)
         val topicToFile = mutableMapOf<String, String>()
@@ -119,20 +116,20 @@ class VaultScanner(
         val parsed = mutableListOf<ParsedTask>()
         var i = 0
         while (i < lines.size) {
-            val match = checkboxRegex.find(lines[i])
+            val match = VaultTaskGrammar.checkboxLine.find(lines[i])
             if (match == null) {
                 i++
                 continue
             }
             val startLine = i
             val done = match.groupValues[2] != " "
-            val title = stripEmphasis(match.groupValues[3])
+            val rest = match.groupValues[4]
             val fields = mutableMapOf<String, String>()
+            collectFields(rest, fields)
+            val title = stripEmphasis(VaultTaskGrammar.inlineField.replace(rest, "").trim())
             i++
-            while (i < lines.size && isFieldLine(lines[i])) {
-                fieldRegex.findAll(lines[i]).forEach { field ->
-                    fields.putIfAbsent(field.groupValues[1].lowercase(), field.groupValues[2].trim())
-                }
+            while (i < lines.size && isBlockContinuation(lines[i])) {
+                collectFields(lines[i], fields)
                 i++
             }
             val inlineTopic = fields["topic"]
@@ -152,8 +149,19 @@ class VaultScanner(
         return parsed
     }
 
-    private fun isFieldLine(line: String): Boolean =
-        line.isNotBlank() && line.first().isWhitespace() && fieldRegex.containsMatchIn(line)
+    private fun collectFields(
+        source: String,
+        fields: MutableMap<String, String>,
+    ) {
+        VaultTaskGrammar.inlineField.findAll(source).forEach { field ->
+            fields.putIfAbsent(field.groupValues[1].lowercase(), field.groupValues[2].trim())
+        }
+    }
+
+    private fun isBlockContinuation(line: String): Boolean =
+        line.isNotBlank() &&
+            line.first().isWhitespace() &&
+            !VaultTaskGrammar.checkboxLine.containsMatchIn(line)
 
     private fun deriveId(
         relativePath: String,

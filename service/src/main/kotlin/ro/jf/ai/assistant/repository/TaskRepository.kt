@@ -17,10 +17,7 @@ interface TaskRepository {
 
     fun update(
         id: String,
-        title: String,
-        dueDate: LocalDate?,
-        topic: String?,
-        done: Boolean,
+        patch: TaskPatch,
     ): Task?
 
     fun delete(id: String): Boolean

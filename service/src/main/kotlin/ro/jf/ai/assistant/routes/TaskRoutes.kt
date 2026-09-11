@@ -29,8 +29,8 @@ fun Route.taskRoutes(service: TaskService) {
             call.respond(service.get(call.parameters["id"]!!).toResponse())
         }
         put("{id}") {
-            val task = service.update(call.parameters["id"]!!, call.receive<UpdateTaskRequest>())
-            call.respond(task.toResponse())
+            val request = call.receive<UpdateTaskRequest>()
+            call.respond(service.update(call.parameters["id"]!!, request).toResponse())
         }
         post("{id}/complete") {
             call.respond(service.complete(call.parameters["id"]!!).toResponse())

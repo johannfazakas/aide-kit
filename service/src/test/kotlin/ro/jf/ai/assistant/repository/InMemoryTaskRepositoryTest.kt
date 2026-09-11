@@ -60,10 +60,10 @@ class InMemoryTaskRepositoryTest {
     }
 
     @Test
-    fun `given an existing task when update then replaces fields and preserves id`() {
+    fun `given an existing task when update with a full-replace patch then replaces fields and preserves id`() {
         val task = repository.create("Old title", LocalDate.parse("2026-07-31"), "home", false)
 
-        val updated = repository.update(task.id, "New title", null, null, true)
+        val updated = repository.update(task.id, TaskPatch.replace("New title", null, null, true))
 
         assertEquals(task.id, updated?.id)
         assertEquals("New title", updated?.title)
@@ -74,8 +74,17 @@ class InMemoryTaskRepositoryTest {
     }
 
     @Test
+    fun `given a single-field patch when update then only that field changes`() {
+        val task = repository.create("Dentist", LocalDate.parse("2026-07-31"), "home", false)
+
+        val updated = repository.update(task.id, TaskPatch.complete())
+
+        assertEquals(task.copy(done = true), updated)
+    }
+
+    @Test
     fun `given an unknown id when update then returns null`() {
-        assertNull(repository.update("missing", "Title", null, null, false))
+        assertNull(repository.update("missing", TaskPatch.complete()))
     }
 
     @Test

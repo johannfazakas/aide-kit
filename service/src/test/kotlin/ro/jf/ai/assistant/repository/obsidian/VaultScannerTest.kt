@@ -347,6 +347,120 @@ class VaultScannerTest {
     }
 
     @Test
+    fun `given an inline due on the checkbox line when scanning then the title and due are parsed`() {
+        val scan =
+            scanner.scan(
+                listOf(
+                    file(
+                        "organization/Inbox.md",
+                        """
+                        # Inbox
+                        - [ ] Pay rent [due:: 2026-09-01]
+                        """,
+                    ),
+                ),
+            )
+
+        val task = scan.tasks.single().task
+        assertEquals("Pay rent", task.title)
+        assertEquals(LocalDate.parse("2026-09-01"), task.dueDate)
+    }
+
+    @Test
+    fun `given an inline topic on the checkbox line when scanning then the title is clean of field expressions`() {
+        val scan =
+            scanner.scan(
+                listOf(
+                    file(
+                        "areas/Family.md",
+                        """
+                        ---
+                        topic: family
+                        ---
+                        - [ ] Book appointment [topic:: health]
+                        """,
+                    ),
+                ),
+            )
+
+        val task = scan.tasks.single().task
+        assertEquals("Book appointment", task.title)
+        assertEquals("health", task.topic)
+    }
+
+    @Test
+    fun `given a free-text note inside a block when scanning then the note belongs to the block`() {
+        val scan =
+            scanner.scan(
+                listOf(
+                    file(
+                        "areas/Home.md",
+                        """
+                        ---
+                        topic: home
+                        ---
+                        ## Tasks
+                        - [ ] Plan trip
+                              remember to check passports
+                              [due:: 2026-10-01]
+                        """,
+                    ),
+                ),
+            )
+
+        val scanned = scan.tasks.single()
+        assertEquals("Plan trip", scanned.task.title)
+        assertEquals(LocalDate.parse("2026-10-01"), scanned.task.dueDate)
+        assertEquals(4, scanned.location.startLine)
+        assertEquals(7, scanned.location.endLine)
+    }
+
+    @Test
+    fun `given a field below a note line when scanning then the field is still parsed`() {
+        val scan =
+            scanner.scan(
+                listOf(
+                    file(
+                        "areas/Home.md",
+                        """
+                        ---
+                        topic: home
+                        ---
+                        - [ ] Call plumber
+                              waiting on quote
+                              [due:: 2026-09-20]
+                        """,
+                    ),
+                ),
+            )
+
+        val task = scan.tasks.single().task
+        assertEquals(LocalDate.parse("2026-09-20"), task.dueDate)
+    }
+
+    @Test
+    fun `given a duplicate key on the checkbox line and a follow-up line when scanning then the checkbox line wins`() {
+        val scan =
+            scanner.scan(
+                listOf(
+                    file(
+                        "areas/Home.md",
+                        """
+                        ---
+                        topic: home
+                        ---
+                        - [ ] Pay rent [due:: 2026-09-01]
+                              [due:: 2026-12-31]
+                        """,
+                    ),
+                ),
+            )
+
+        val task = scan.tasks.single().task
+        assertEquals(LocalDate.parse("2026-09-01"), task.dueDate)
+    }
+
+    @Test
     fun `given topic files when scanning then topic to file resolution is exposed`() {
         val scan =
             scanner.scan(

@@ -42,3 +42,5 @@ JGit-backed list/get/create and surgical task edits (update/complete against the
 ### detekt
 
 ### Make the api key not opencode specific
+
+### Calendar integration on Roadmap aide kit

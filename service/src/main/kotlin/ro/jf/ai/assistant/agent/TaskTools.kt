@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import ro.jf.ai.assistant.exception.TaskNotFoundException
 import ro.jf.ai.assistant.exception.UnsupportedTaskOperationException
 import ro.jf.ai.assistant.exception.VaultConflictException
+import ro.jf.ai.assistant.model.Task
 import ro.jf.ai.assistant.service.TaskService
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.toResponse
@@ -21,8 +22,8 @@ class TaskTools(
 
     @Tool
     @LLMDescription(
-        "List the user's tasks, optionally filtered by topic. Returns a JSON array of tasks. " +
-            "To find a task described by its content, list without a topic filter and match by title.",
+        "List the user's tasks, optionally filtered by topic. Returns a JSON array of tasks. To find a task " +
+            "described by its content, list without a topic filter and match by title.",
     )
     fun listTasks(
         @LLMDescription(
@@ -47,10 +48,7 @@ class TaskTools(
     fun getTask(
         @LLMDescription("The id of the task")
         id: String,
-    ): String =
-        guarded {
-            json.encodeToString(service.get(id).toResponse())
-        }
+    ): String = guarded { encode(service.get(id)) }
 
     @Tool
     @LLMDescription("Create a new task. Returns the created task as JSON, including its generated id.")
@@ -67,8 +65,7 @@ class TaskTools(
         topic: String? = null,
     ): String =
         guarded {
-            val task = service.create(CreateTaskRequest(title, dueDate.toLocalDate(), topic))
-            json.encodeToString(task.toResponse())
+            encode(service.create(CreateTaskRequest(title, dueDate.toLocalDate(), topic)))
         }
 
     @Tool
@@ -78,7 +75,7 @@ class TaskTools(
     fun completeTask(
         @LLMDescription("The id of the task to complete")
         id: String,
-    ): String = guarded { json.encodeToString(service.complete(id).toResponse()) }
+    ): String = guarded { encode(service.complete(id)) }
 
     @Tool
     @LLMDescription(
@@ -88,7 +85,7 @@ class TaskTools(
     fun reopenTask(
         @LLMDescription("The id of the task to reopen")
         id: String,
-    ): String = guarded { json.encodeToString(service.reopen(id).toResponse()) }
+    ): String = guarded { encode(service.reopen(id)) }
 
     @Tool
     @LLMDescription(
@@ -100,7 +97,7 @@ class TaskTools(
         id: String,
         @LLMDescription("New due date in ISO-8601 format (yyyy-MM-dd); omit to clear the due date")
         dueDate: String? = null,
-    ): String = guarded { json.encodeToString(service.reschedule(id, dueDate.toLocalDate()).toResponse()) }
+    ): String = guarded { encode(service.reschedule(id, dueDate.toLocalDate())) }
 
     @Tool
     @LLMDescription(
@@ -111,7 +108,7 @@ class TaskTools(
         id: String,
         @LLMDescription("New title of the task; must not be blank")
         title: String,
-    ): String = guarded { json.encodeToString(service.rename(id, title).toResponse()) }
+    ): String = guarded { encode(service.rename(id, title)) }
 
     @Tool
     @LLMDescription(
@@ -125,7 +122,9 @@ class TaskTools(
         id: String,
         @LLMDescription("Topic to move the task to; omit to remove the topic (the task goes to the inbox)")
         topic: String? = null,
-    ): String = guarded { json.encodeToString(service.changeTopic(id, topic).toResponse()) }
+    ): String = guarded { encode(service.changeTopic(id, topic)) }
+
+    private fun encode(task: Task): String = json.encodeToString(task.toResponse())
 
     private fun String?.toLocalDate(): LocalDate? =
         this?.let {

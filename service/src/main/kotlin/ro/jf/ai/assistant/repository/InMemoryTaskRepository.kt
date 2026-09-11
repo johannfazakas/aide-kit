@@ -12,6 +12,7 @@ class InMemoryTaskRepository(
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
 ) : TaskRepository {
     private val tasks = ConcurrentHashMap<String, Task>()
+    private val lock = Any()
 
     override fun create(
         title: String,
@@ -19,6 +20,7 @@ class InMemoryTaskRepository(
         topic: String?,
         done: Boolean,
     ): Task {
+        requireKnownTopic(topic)
         val task = Task(idGenerator(), title, dueDate, topic, done)
         tasks[task.id] = task
         return task
@@ -30,13 +32,23 @@ class InMemoryTaskRepository(
 
     override fun update(
         id: String,
-        title: String,
-        dueDate: LocalDate?,
-        topic: String?,
-        done: Boolean,
-    ): Task? = tasks.computeIfPresent(id) { _, _ -> Task(id, title, dueDate, topic, done) }
+        patch: TaskPatch,
+    ): Task? =
+        synchronized(lock) {
+            val current = tasks[id] ?: return null
+            requireKnownTopic(patch.topic?.value)
+            val updated = patch.applyTo(current)
+            tasks[id] = updated
+            updated
+        }
 
     override fun delete(id: String): Boolean = tasks.remove(id) != null
 
     override fun listTopics(): List<String> = topics
+
+    private fun requireKnownTopic(topic: String?) {
+        if (topic != null && topic !in topics) {
+            throw IllegalArgumentException("Unknown topic '$topic'; choose one of $topics or omit the topic")
+        }
+    }
 }

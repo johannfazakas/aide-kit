@@ -93,20 +93,21 @@ class VaultGitBridge(
     fun <T> write(
         commitMessage: String,
         mutate: () -> T,
-    ): T = write({ commitMessage }, mutate)
-
-    fun <T> write(
-        commitMessage: () -> String,
-        mutate: () -> T,
     ): T =
         lock.withLock {
+            val value =
+                try {
+                    mutate()
+                } catch (e: Exception) {
+                    abortRebaseAndReset()
+                    throw e
+                }
             try {
-                val result = mutate()
-                if (git.status().call().isClean) return@withLock result
+                if (git.status().call().isClean) return@withLock value
                 git.add().addFilepattern(".").call()
                 git
                     .commit()
-                    .setMessage(commitMessage())
+                    .setMessage(commitMessage)
                     .setAuthor("aide-kit", "aide-kit@local")
                     .call()
                 if (!push()) {
@@ -115,11 +116,11 @@ class VaultGitBridge(
                         throw VaultConflictException()
                     }
                 }
-                result
+                value
             } catch (e: VaultConflictException) {
                 throw e
             } catch (e: Exception) {
-                logger.warn("Vault write failed; resetting clone", e)
+                logger.warn("Vault git operation failed; resetting clone", e)
                 abortRebaseAndReset()
                 throw VaultConflictException()
             }

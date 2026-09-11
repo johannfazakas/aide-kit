@@ -3,6 +3,7 @@ package ro.jf.ai.assistant.service
 import kotlinx.datetime.LocalDate
 import ro.jf.ai.assistant.exception.TaskNotFoundException
 import ro.jf.ai.assistant.model.Task
+import ro.jf.ai.assistant.repository.TaskPatch
 import ro.jf.ai.assistant.repository.TaskRepository
 import ro.jf.ai.assistant.transfer.CreateTaskRequest
 import ro.jf.ai.assistant.transfer.UpdateTaskRequest
@@ -11,8 +12,7 @@ class TaskService(
     private val repository: TaskRepository,
 ) {
     fun create(request: CreateTaskRequest): Task {
-        require(request.title.isNotBlank()) { "Title must not be blank" }
-        validateTopic(request.topic)
+        validateTitle(request.title)
         return repository.create(request.title, request.dueDate, request.topic, request.done)
     }
 
@@ -26,58 +26,48 @@ class TaskService(
         id: String,
         request: UpdateTaskRequest,
     ): Task {
-        require(request.title.isNotBlank()) { "Title must not be blank" }
-        validateTopic(request.topic)
-        return repository.update(id, request.title, request.dueDate, request.topic, request.done)
-            ?: throw TaskNotFoundException(id)
+        validateTitle(request.title)
+        return repository.update(
+            id,
+            TaskPatch.replace(request.title, request.dueDate, request.topic, request.done),
+        ) ?: throw TaskNotFoundException(id)
     }
 
-    fun complete(id: String): Task = applyEdit(id) { it.copy(done = true) }
+    fun complete(id: String): Task = apply(id, TaskPatch.complete())
 
-    fun reopen(id: String): Task = applyEdit(id) { it.copy(done = false) }
+    fun reopen(id: String): Task = apply(id, TaskPatch.reopen())
 
     fun reschedule(
         id: String,
         dueDate: LocalDate?,
-    ): Task = applyEdit(id) { it.copy(dueDate = dueDate) }
+    ): Task = apply(id, TaskPatch.reschedule(dueDate))
 
     fun rename(
         id: String,
         title: String,
     ): Task {
-        require(title.isNotBlank()) { "Title must not be blank" }
-        return applyEdit(id) { it.copy(title = title) }
+        validateTitle(title)
+        return apply(id, TaskPatch.rename(title))
     }
 
     fun changeTopic(
         id: String,
         topic: String?,
-    ): Task {
-        validateTopic(topic)
-        return applyEdit(id) { it.copy(topic = topic) }
-    }
+    ): Task = apply(id, TaskPatch.changeTopic(topic))
 
     fun delete(id: String) {
         if (!repository.delete(id)) throw TaskNotFoundException(id)
     }
 
-    private fun applyEdit(
+    private fun apply(
         id: String,
-        transform: (Task) -> Task,
-    ): Task {
-        val current = get(id)
-        val target = transform(current)
-        return repository.update(current.id, target.title, target.dueDate, target.topic, target.done)
-            ?: throw TaskNotFoundException(id)
-    }
+        patch: TaskPatch,
+    ): Task = repository.update(id, patch) ?: throw TaskNotFoundException(id)
 
-    private fun validateTopic(topic: String?) {
-        if (topic == null) return
-        val topics = repository.listTopics()
-        if (topic !in topics) {
-            throw IllegalArgumentException(
-                "Unknown topic '$topic'; choose one of $topics or omit the topic",
-            )
+    private fun validateTitle(title: String) {
+        require(title.isNotBlank()) { "Title must not be blank" }
+        require(title.none { it.isISOControl() }) {
+            "Title must be a single line without line breaks or control characters"
         }
     }
 }

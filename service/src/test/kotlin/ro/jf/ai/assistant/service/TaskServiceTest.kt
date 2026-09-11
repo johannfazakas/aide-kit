@@ -32,9 +32,10 @@ class TaskServiceTest {
     @Test
     fun `given all fields when create then task is stored with given values`() {
         val task =
-            service.create(
-                CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), topic = "health"),
-            )
+            service
+                .create(
+                    CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-08-10"), topic = "health"),
+                )
 
         assertEquals(LocalDate.parse("2026-08-10"), task.dueDate)
         assertEquals("health", task.topic)
@@ -43,6 +44,21 @@ class TaskServiceTest {
     @Test
     fun `given a blank title when create then throws IllegalArgumentException`() {
         assertFailsWith<IllegalArgumentException> { service.create(CreateTaskRequest(title = "   ")) }
+    }
+
+    @Test
+    fun `given a title with a line break when create then throws IllegalArgumentException`() {
+        assertFailsWith<IllegalArgumentException> {
+            service.create(CreateTaskRequest(title = "line one\nline two"))
+        }
+        assertTrue(service.list().isEmpty())
+    }
+
+    @Test
+    fun `given a title with a line break when rename then throws IllegalArgumentException`() {
+        val task = service.create(CreateTaskRequest(title = "Valid"))
+
+        assertFailsWith<IllegalArgumentException> { service.rename(task.id, "bad\rtitle") }
     }
 
     @Test
@@ -90,9 +106,10 @@ class TaskServiceTest {
     @Test
     fun `given an existing task when update then replaces all fields and preserves id`() {
         val task =
-            service.create(
-                CreateTaskRequest(title = "Old", dueDate = LocalDate.parse("2026-07-31"), topic = "home"),
-            )
+            service
+                .create(
+                    CreateTaskRequest(title = "Old", dueDate = LocalDate.parse("2026-07-31"), topic = "home"),
+                )
 
         val updated = service.update(task.id, UpdateTaskRequest(title = "New", done = true))
 
@@ -118,9 +135,10 @@ class TaskServiceTest {
     @Test
     fun `given an open task when complete then only done changes`() {
         val task =
-            service.create(
-                CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10"), topic = "health"),
-            )
+            service
+                .create(
+                    CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10"), topic = "health"),
+                )
 
         val updated = service.complete(task.id)
 
@@ -138,7 +156,8 @@ class TaskServiceTest {
 
     @Test
     fun `given a task when reschedule then only the due date changes`() {
-        val task = service.create(CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10")))
+        val task =
+            service.create(CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10")))
 
         val updated = service.reschedule(task.id, LocalDate.parse("2026-09-20"))
 
@@ -147,7 +166,8 @@ class TaskServiceTest {
 
     @Test
     fun `given a task with a due date when reschedule with null then the due date is cleared`() {
-        val task = service.create(CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10")))
+        val task =
+            service.create(CreateTaskRequest(title = "Dentist", dueDate = LocalDate.parse("2026-09-10")))
 
         val updated = service.reschedule(task.id, null)
 

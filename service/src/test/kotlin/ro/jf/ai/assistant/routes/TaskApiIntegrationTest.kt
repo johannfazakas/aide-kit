@@ -118,7 +118,8 @@ class TaskApiIntegrationTest {
             val response = client.post("/api/v1/tasks/${created.id}/complete")
 
             assertEquals(HttpStatusCode.OK, response.status)
-            assertEquals(created.copy(done = true), response.body<TaskResponse>())
+            val body = response.body<TaskResponse>()
+            assertEquals(created.copy(done = true), body)
         }
 
     @Test
@@ -129,7 +130,8 @@ class TaskApiIntegrationTest {
             val response = client.post("/api/v1/tasks/${created.id}/reopen")
 
             assertEquals(HttpStatusCode.OK, response.status)
-            assertEquals(created.copy(done = false), response.body<TaskResponse>())
+            val body = response.body<TaskResponse>()
+            assertEquals(created.copy(done = false), body)
         }
 
     @Test
@@ -147,7 +149,8 @@ class TaskApiIntegrationTest {
                 }
 
             assertEquals(HttpStatusCode.OK, response.status)
-            assertEquals(created.copy(dueDate = LocalDate.parse("2026-09-20")), response.body<TaskResponse>())
+            val body = response.body<TaskResponse>()
+            assertEquals(created.copy(dueDate = LocalDate.parse("2026-09-20")), body)
         }
 
     @Test
